@@ -89,7 +89,8 @@ const LoginPage = () => {
   const [selectedProvider, setSelectedProvider] = useState('');
   const [searchParams] = useSearchParams();
 
-  const { isAuthenticated } = useAuth();
+  // 🔥 CORREÇÃO: Extrair todas as funções do useAuth de uma vez
+  const { isAuthenticated, socialLogin } = useAuth();
 
   // Obter parâmetros da URL
   const plan = searchParams.get('plan');
@@ -128,7 +129,7 @@ const LoginPage = () => {
     }
   ];
 
-  // 🔥 NOVA FUNÇÃO: Login com redirecionamento personalizado
+  // 🔥 CORREÇÃO: Função handleSocialLogin corrigida - sem chamar useAuth() dentro
   const handleSocialLogin = async (provider) => {
     setIsLoading(true);
     setError('');
@@ -141,7 +142,7 @@ const LoginPage = () => {
       let redirectUrl = baseRedirect;
       
       // Se há parâmetros de plano, adicionar à URL de redirecionamento
-      if (plan || billing) {
+      if (plan || billing || redirect) {
         const params = new URLSearchParams();
         if (plan) params.append('plan', plan);
         if (billing) params.append('billing', billing);
@@ -154,24 +155,11 @@ const LoginPage = () => {
       console.log('🔵 Login - Redirect URL:', redirectUrl);
       console.log('🔵 Login - Parâmetros:', { plan, billing, redirect });
 
-      // Fazer login diretamente com Supabase para controlar o redirect
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: provider,
-        options: {
-          queryParams: provider === 'google' ? {
-            access_type: 'offline',
-            prompt: 'consent',
-          } : {},
-          redirectTo: redirectUrl,
-        },
-      });
+      // 🔥 CORREÇÃO: Usar a função socialLogin que já foi extraída do hook
+      await socialLogin(provider);
 
-      if (error) {
-        console.error('🔴 Supabase OAuth error:', error);
-        throw error;
-      }
-
-      console.log('✅ Login iniciado com sucesso');
+      // O redirecionamento agora é controlado pelo Supabase/OAuth
+      console.log('✅ Login iniciado com sucesso - redirecionamento pelo provedor');
 
     } catch (err) {
       console.error('🔴 Login error:', err);
@@ -181,7 +169,7 @@ const LoginPage = () => {
     }
   };
 
-  // 🔥 NOVO: Obter texto informativo baseado no plano selecionado
+  // Obter texto informativo baseado no plano selecionado
   const getPlanInfoText = () => {
     if (!plan) return null;
 
@@ -226,7 +214,7 @@ const LoginPage = () => {
               {planInfoText || 'Use sua conta social para acessar o Reppy'}
             </p>
 
-            {/* 🔥 NOVO: Informação do plano selecionado */}
+            {/* Informação do plano selecionado */}
             {planInfoText && (
               <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
                 <div className="flex items-center">
@@ -313,7 +301,7 @@ const LoginPage = () => {
             </button>
           </div>
 
-          {/* 🔥 NOVO: Informações adicionais para seleção de plano */}
+          {/* Informações adicionais para seleção de plano */}
           {plan && (
             <div className="mt-8 p-4 bg-gray-50 rounded-xl border border-gray-200">
               <h4 className="font-semibold text-gray-900 mb-2 text-sm">
@@ -398,7 +386,7 @@ const LoginPage = () => {
             </p>
           </div>
 
-          {/* 🔥 NOVO: Informação adicional sobre planos */}
+          {/* Informação adicional sobre planos */}
           {plan && (
             <div className="mt-6 p-4 bg-blue-500/10 rounded-xl border border-blue-500/20">
               <h4 className="font-bold text-white mb-2 text-sm">💡 Todos os planos incluem:</h4>
@@ -413,7 +401,7 @@ const LoginPage = () => {
         </div>
       </div>
 
-      {/* 🔥 NOVO: Loading overlay para estado de carregamento */}
+      {/* Loading overlay para estado de carregamento */}
       {isLoading && (
         <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center">
           <div className="bg-white rounded-2xl p-8 shadow-2xl max-w-sm mx-4">

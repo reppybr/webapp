@@ -6,7 +6,6 @@ import {
   FiUser, 
   FiUserCheck, 
   FiUserPlus, 
-  FiLock,
   FiBell,
   FiTrash2,
   FiStar,
@@ -14,14 +13,31 @@ import {
   FiSave,
   FiLoader,
   FiAlertCircle,
-  FiCreditCard,
   FiZap,
   FiAward
 } from 'react-icons/fi';
 import { useLocation } from '../../../hooks/useLocation';
 import { configService } from '../../../services/configService';
 import { useAuth } from '../../../contexts/AuthContext';
+const capitalizeName = (name) => {
+  if (typeof name !== 'string' || !name) return '';
+  
+  // Exceções comuns que devem ficar em minúsculas (exceto no início)
+  const exceptions = ['de', 'da', 'do', 'das', 'dos'];
 
+  return name
+    .toLowerCase() // Garante que tudo comece minúsculo
+    .split(' ')
+    .map((word, index) => {
+      // Se for uma exceção E não for a primeira palavra
+      if (exceptions.includes(word) && index > 0) {
+        return word;
+      }
+      // Capitaliza a primeira letra
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
+    .join(' ');
+};
 // Componente Seletor de Gênero
 const GenderSelector = ({ selected, onChange }) => {
   const options = [
@@ -189,14 +205,12 @@ const PlanCard = ({ currentPlan, onUpgrade }) => {
       features: [
         `Tenha acesso a 1° chamada.`,
         `Acesso a lista de calouros`
-        
       ],
       nextPlan: 'basic',
-      upgradeText: 'Fazer Upgrade para Basic'
+      upgradeText: 'Fazer Upgrade para Veterano'
     },
     basic: {
       name: 'Veterano',
-
       description: 'Ideal para repúblicas',
       color: 'blue',
       features: [
@@ -212,7 +226,6 @@ const PlanCard = ({ currentPlan, onUpgrade }) => {
     },
     premium: {
       name: 'Veterano Mor',
-
       description: 'Para repúblicas profissionais',
       color: 'purple',
       features: [
@@ -243,7 +256,6 @@ const PlanCard = ({ currentPlan, onUpgrade }) => {
         </div>
         <div>
           <span className="text-2xl font-bold text-gray-900">{plan.name}</span>
-
         </div>
       </div>
 
@@ -276,7 +288,7 @@ const PlanCard = ({ currentPlan, onUpgrade }) => {
           disabled
           className="w-full text-center px-4 py-2 bg-gray-300 text-gray-600 rounded-md text-sm font-bold cursor-not-allowed"
         >
-          {plan.upgradeText}
+          Plano Máximo
         </button>
       )}
     </div>
@@ -304,30 +316,24 @@ const Config = ({ userData }) => {
   const { 
     getUserRepublic, 
     getRepublicMembers, 
-    isPremium, 
-    upgradePlan,
-    createCheckout 
+    isPremium
   } = useAuth();
 
   const republic = getUserRepublic();
   const republicMembers = getRepublicMembers();
 
- 
-   const handleUpgrade = (planType) => { // Não precisa ser 'async'
-      try {
-        setError('');
-        setMessage('');
-  
-        console.log(`🟡 [CONFIG] Usuário clicou em upgrade. Redirecionando para /plans...`);
-        
-        // 🔥 MUDANÇA: Redireciona o usuário para a página de planos
-        window.location.href = '/planos';
-  
-      } catch (err) {
-        console.error('🔴 [CONFIG] Erro ao redirecionar:', err);
-        setError(err.message || 'Erro ao tentar navegar para planos');
-      }
-    };
+  // Handler para upgrade de plano
+  const handleUpgrade = (planType) => {
+    try {
+      setError('');
+      setMessage('');
+      console.log(`🟡 [CONFIG] Usuário clicou em upgrade. Redirecionando para /plans...`);
+      window.location.href = '/planos';
+    } catch (err) {
+      console.error('🔴 [CONFIG] Erro ao redirecionar:', err);
+      setError(err.message || 'Erro ao tentar navegar para planos');
+    }
+  };
 
   // Carregar estados quando o componente montar
   useEffect(() => {
@@ -336,74 +342,100 @@ const Config = ({ userData }) => {
 
   // Carregar configurações iniciais
   useEffect(() => {
+    let mounted = true;
+
     const loadConfig = async () => {
+      if (!mounted) return;
+
       try {
         setLoading(true);
         setError('');
         
         console.log('🟡 [CONFIG] Carregando configurações...');
         
-        // Carregar configurações da república
-        const republicResponse = await configService.getRepublicConfig();
-        console.log('🟡 [CONFIG] Resposta da república:', republicResponse);
-        
+        // Buscar dados da API
+        const [republicResponse, notificationsResponse] = await Promise.all([
+          configService.getRepublicConfig().catch(err => {
+            console.warn('⚠️ [CONFIG] Erro ao buscar república:', err);
+            return { republica: null };
+          }),
+          configService.getUserNotifications().catch(err => {
+            console.warn('⚠️ [CONFIG] Erro ao buscar notificações:', err);
+            return { notifications: { email_notifications: true } };
+          })
+        ]);
+
+        if (!mounted) return;
+
+        // Preencher dados da república
         if (republicResponse.republica) {
           const rep = republicResponse.republica;
           setRepName(rep.name || '');
           setRepGender(rep.tipo || 'mista');
-          setRepCity(rep.city || '');
+          setRepCity(capitalizeName(rep.city || ''));
           setRepState(rep.state || '');
           
-          console.log(`✅ [CONFIG] República carregada: ${rep.name} em ${rep.city}/${rep.state}`);
+          console.log(`✅ [CONFIG] Dados carregados: ${rep.name} em ${rep.city}/${rep.state}`);
           
-          // Se temos estado, carregar as cidades correspondentes
+          // Carregar cidades se tivermos estado
           if (rep.state && states.length > 0) {
             const stateObj = states.find(s => s.nome === rep.state);
             if (stateObj) {
-              console.log(`🟡 [CONFIG] Buscando cidades para estado: ${rep.state} (ID: ${stateObj.id})`);
+              console.log(`🟡 [CONFIG] Buscando cidades para: ${rep.state}`);
               fetchCities(stateObj.id);
             }
           }
         } else {
           console.log('🟡 [CONFIG] Usuário não tem república configurada');
         }
-        
-        // Carregar configurações de notificação (com fallback)
-        try {
-          const notificationsResponse = await configService.getUserNotifications();
-          console.log('🟡 [CONFIG] Resposta das notificações:', notificationsResponse);
-          
-          if (notificationsResponse.notifications) {
-            setNotifications(notificationsResponse.notifications.email_notifications ?? true);
-          }
-        } catch (notificationsError) {
-          console.warn('⚠️ [CONFIG] Erro ao carregar notificações, usando padrão:', notificationsError);
-          setNotifications(true); // Valor padrão
+
+        // Preencher notificações
+        if (notificationsResponse.notifications) {
+          setNotifications(notificationsResponse.notifications.email_notifications ?? true);
         }
         
       } catch (err) {
+        if (!mounted) return;
         console.error('🔴 [CONFIG] Erro ao carregar configurações:', err);
         const errorMessage = err.response?.data?.error || 'Erro ao carregar configurações';
         setError(errorMessage);
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
 
+    // Só carregar quando states estiver disponível
     if (states.length > 0) {
       loadConfig();
     }
+
+    return () => {
+      mounted = false;
+    };
   }, [states, fetchCities]);
+
+  // useEffect para carregar cidades quando estado mudar
+  useEffect(() => {
+    if (repState && states.length > 0) {
+      const stateObj = states.find(s => s.nome === repState);
+      if (stateObj) {
+        console.log(`🟡 [CONFIG] Carregando cidades para estado: ${repState}`);
+        fetchCities(stateObj.id);
+      }
+    }
+  }, [repState, states, fetchCities]);
 
   // Handler para mudança de estado
   const handleStateChange = (e) => {
     const newStateName = e.target.value;
     setRepState(newStateName);
-    setRepCity(''); // Reseta a cidade quando o estado muda
+    setRepCity('');
 
     const selectedStateObj = states.find(s => s.nome === newStateName);
     if (selectedStateObj) {
-      console.log(`🟡 [CONFIG] Estado alterado para: ${newStateName}, buscando cidades...`);
+      console.log(`🟡 [CONFIG] Estado alterado para: ${newStateName}`);
       fetchCities(selectedStateObj.id);
     }
   };
@@ -440,26 +472,20 @@ const Config = ({ userData }) => {
         state: repState
       });
 
-      // Atualizar configurações da república
-      const republicData = {
-        name: repName.trim(),
-        tipo: repGender,
-        city: repCity,
-        state: repState
-      };
-
-      await configService.updateRepublicConfig(republicData);
-
-      // Atualizar configurações de notificação
-      const notificationsData = {
-        email_notifications: notifications
-      };
-
-      await configService.updateUserNotifications(notificationsData);
+      // Atualizar configurações
+      await Promise.all([
+        configService.updateRepublicConfig({
+          name: repName.trim(),
+          tipo: repGender,
+          city: repCity,
+          state: repState
+        }),
+        configService.updateUserNotifications({
+          email_notifications: notifications
+        })
+      ]);
 
       setMessage('Configurações salvas com sucesso!');
-      
-      // Limpar mensagem após 3 segundos
       setTimeout(() => setMessage(''), 3000);
 
     } catch (err) {
@@ -640,30 +666,12 @@ const Config = ({ userData }) => {
           </div>
         </div>
 
-        {/* Coluna Lateral (Planos) */}
+        {/* Coluna Lateral (Apenas Planos) */}
         <div className="space-y-6">
-          {/* Card: Seu Plano */}
           <PlanCard 
             currentPlan={userData?.user_plan} 
             onUpgrade={handleUpgrade}
           />
-
-          {/* Card: Método de Pagamento (apenas para planos pagos) */}
-          {(isPremium() || userData?.user_plan?.plan_type === 'basic') && (
-            <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">Método de Pagamento</h3>
-              <div className="flex items-center space-x-3 mb-4">
-                <FiCreditCard className="w-6 h-6 text-gray-600" />
-                <div>
-                  <span className="text-gray-700 block">Cartão de Crédito</span>
-                  <span className="text-sm text-gray-500">**** **** **** 4242</span>
-                </div>
-              </div>
-              <button className="w-full text-center px-4 py-2 border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50 transition-colors">
-                Alterar Método de Pagamento
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>

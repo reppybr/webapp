@@ -57,7 +57,7 @@ const Footer = () => {
                 <span className="sr-only">Facebook</span>
                 <FacebookIcon />
               </a>
-              <a href="#" className="text-gray-500 hover:text-black">
+              <a target='_blank' href="https://www.instagram.com/reppy_br/" className="text-gray-500 hover:text-black">
                 <span className="sr-only">Instagram</span>
                 <InstagramIcon />
               </a>
@@ -73,8 +73,8 @@ const Footer = () => {
             <h3 className="text-sm font-semibold text-gray-400 tracking-wider uppercase">Produto</h3>
             <ul className="mt-4 space-y-2">
               <li><a href="/planos" className="text-base text-gray-600 hover:text-black">Planos</a></li>
-              <li><a href="/servicos" className="text-base text-gray-600 hover:text-black">Recursos</a></li>
-              <li><a href="#" className="text-base text-gray-600 hover:text-black">Novidades</a></li>
+              <li><a href="/servicos" className="text-base text-gray-600 hover:text-black">Serviços</a></li>
+              <li><a href="/novidades" className="text-base text-gray-600 hover:text-black">Novidades</a></li>
             </ul>
           </div>
 
@@ -82,8 +82,8 @@ const Footer = () => {
           <div>
             <h3 className="text-sm font-semibold text-gray-400 tracking-wider uppercase">Startup</h3>
             <ul className="mt-4 space-y-2">
-              <li><a href="#" className="text-base text-gray-600 hover:text-black">Sobre nós</a></li>
-              <li><a href="#" className="text-base text-gray-600 hover:text-black">Contato</a></li>
+              <li><a href="/sobre-nos" className="text-base text-gray-600 hover:text-black">Sobre nós</a></li>
+              <li><a href="/contato" className="text-base text-gray-600 hover:text-black">Contato</a></li>
             </ul>
           </div>
 

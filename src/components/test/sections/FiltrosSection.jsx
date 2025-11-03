@@ -6,11 +6,13 @@ import {
   FiEdit2, 
   FiTrash2,
   FiInbox,
-  FiX, // Ícone para fechar modais
-  FiAlertTriangle // Ícone para o modal de exclusão
+  FiX,
+  FiAlertTriangle,
+  FiStar,
+  FiLock
 } from 'react-icons/fi';
-// 1. Importar o useNavigate para o redirecionamento
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../contexts/AuthContext';
 
 // --- DADOS MOCADOS ---
 const MOCKED_FILTERS = [
@@ -47,10 +49,72 @@ const MOCKED_FILTERS = [
 ];
 // ---------------------
 
+/**
+ * Componente de Bloqueio para Planos Free
+ */
+const FreePlanBlock = () => {
+  const navigate = useNavigate();
+
+  return (
+    <div className="bg-white rounded-lg shadow-md border border-gray-200 p-8 text-center">
+      <div className="max-w-md mx-auto">
+        {/* Ícone de bloqueio */}
+        <div className="mx-auto w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mb-4">
+          <FiLock className="w-8 h-8 text-yellow-600" />
+        </div>
+        
+        {/* Título */}
+        <h2 className="text-2xl font-bold text-gray-900 mb-3">
+          Funcionalidade Premium
+        </h2>
+        
+        {/* Descrição */}
+        <p className="text-gray-600 mb-6">
+          Os <strong>Filtros Salvos</strong> estão disponíveis apenas para planos 
+          <span className="text-green-600 font-semibold"> Veterano</span> e <span className="text-purple-600 font-semibold"> Veterano Mor</span>.
+          <br />
+          Faça upgrade para salvar e gerenciar seus filtros personalizados.
+        </p>
+        
+        {/* Recursos dos planos pagos */}
+        <div className="bg-gray-50 rounded-lg p-4 mb-6">
+          <h3 className="font-semibold text-gray-900 mb-3">O que você ganha com os planos pagos:</h3>
+          <ul className="text-sm text-gray-600 space-y-2 text-left">
+            <li className="flex items-center">
+              <FiStar className="w-4 h-4 mr-2 text-green-500" />
+              Filtros personalizados ilimitados
+            </li>
+            <li className="flex items-center">
+              <FiStar className="w-4 h-4 mr-2 text-green-500" />
+              Salvar combinações de filtros
+            </li>
+            <li className="flex items-center">
+              <FiStar className="w-4 h-4 mr-2 text-green-500" />
+              Acesso a dados completos das chamadas
+            </li>
+            <li className="flex items-center">
+              <FiStar className="w-4 h-4 mr-2 text-green-500" />
+              Estatísticas avançadas
+            </li>
+          </ul>
+        </div>
+        
+        {/* Botão de ação */}
+        <button
+          onClick={() => navigate('/planos')}
+          className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 transform hover:scale-105 shadow-lg"
+        >
+          Ver Planos e Fazer Upgrade
+        </button>
+        
+     
+      </div>
+    </div>
+  );
+};
 
 /**
  * 1. Componente de Card para cada Filtro Salvo
- * (Cores atualizadas e handlers de clique)
  */
 const FilterCard = ({ filter, onLoad, onEdit, onDelete }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -68,36 +132,30 @@ const FilterCard = ({ filter, onLoad, onEdit, onDelete }) => {
   const criteriaTags = formatCriteria(filter.criteria);
 
   return (
-    // Card com cores da paleta (fundo, borda)
     <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden transition-all hover:shadow-lg">
       <div className="p-5">
         <div className="flex items-start justify-between">
           <div className="flex items-center space-x-3">
-            {/* Ícone com a cor "Premium" (bg-gray-900) */}
             <div className="flex-shrink-0 bg-gray-900 text-white p-3 rounded-full">
               <FiFilter className="w-5 h-5" />
             </div>
-            {/* Título com a cor "text-gray-900" */}
             <h3 className="text-lg font-semibold text-gray-900 break-words">
               {filter.name}
             </h3>
           </div>
 
-          {/* Menu Kebab (UX) */}
+          {/* Menu Kebab */}
           <div className="relative">
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              onBlur={() => setTimeout(() => setIsMenuOpen(false), 150)} // Delay para permitir o clique no dropdown
+              onBlur={() => setTimeout(() => setIsMenuOpen(false), 150)}
               className="p-1 text-gray-600 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-900"
             >
               <FiMoreVertical className="w-5 h-5" />
             </button>
 
             {isMenuOpen && (
-              <div 
-                className="absolute right-0 z-10 w-48 mt-1 bg-white rounded-md shadow-xl border border-gray-200 py-1"
-              >
-                {/* 1. Botão CARREGAR (chama o handler 'onLoad') */}
+              <div className="absolute right-0 z-10 w-48 mt-1 bg-white rounded-md shadow-xl border border-gray-200 py-1">
                 <button
                   onClick={() => { onLoad(filter); setIsMenuOpen(false); }}
                   className="w-full flex items-center px-4 py-2 text-sm text-gray-900 hover:bg-gray-100"
@@ -105,7 +163,6 @@ const FilterCard = ({ filter, onLoad, onEdit, onDelete }) => {
                   <FiPlay className="w-4 h-4 mr-3" />
                   Carregar
                 </button>
-                {/* 2. Botão EDITAR (chama o handler 'onEdit') */}
                 <button
                   onClick={() => { onEdit(filter); setIsMenuOpen(false); }}
                   className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -113,7 +170,6 @@ const FilterCard = ({ filter, onLoad, onEdit, onDelete }) => {
                   <FiEdit2 className="w-4 h-4 mr-3" />
                   Editar
                 </button>
-                {/* 3. Botão EXCLUIR (chama o handler 'onDelete') */}
                 <button
                   onClick={() => { onDelete(filter); setIsMenuOpen(false); }}
                   className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"
@@ -149,7 +205,6 @@ const FilterCard = ({ filter, onLoad, onEdit, onDelete }) => {
 
 /**
  * 2. Componente de Estado Vazio (UX)
- * (Cores atualizadas)
  */
 const EmptyState = () => {
   return (
@@ -168,14 +223,12 @@ const EmptyState = () => {
   );
 };
 
-
 /**
- * 3. NOVO: Modal de Edição
+ * 3. Modal de Edição
  */
 const EditFilterModal = ({ isOpen, onClose, onConfirm, filter }) => {
   const [name, setName] = useState('');
 
-  // Preenche o input com o nome atual do filtro quando o modal abre
   useEffect(() => {
     if (filter) {
       setName(filter.name);
@@ -191,7 +244,6 @@ const EditFilterModal = ({ isOpen, onClose, onConfirm, filter }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full animate-fade-in-up">
-        {/* Cabeçalho do Modal */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900">Editar Filtro</h3>
           <button onClick={onClose} className="p-1 rounded-full text-gray-500 hover:bg-gray-100">
@@ -199,7 +251,6 @@ const EditFilterModal = ({ isOpen, onClose, onConfirm, filter }) => {
           </button>
         </div>
         
-        {/* Corpo do Modal */}
         <div className="p-6 space-y-2">
           <label htmlFor="filterName" className="block text-sm font-medium text-gray-700">
             Nome do Filtro
@@ -213,7 +264,6 @@ const EditFilterModal = ({ isOpen, onClose, onConfirm, filter }) => {
           />
         </div>
         
-        {/* Rodapé do Modal */}
         <div className="flex items-center justify-end p-4 bg-gray-50 border-t border-gray-200 rounded-b-lg space-x-3">
           <button
             onClick={onClose}
@@ -223,7 +273,6 @@ const EditFilterModal = ({ isOpen, onClose, onConfirm, filter }) => {
           </button>
           <button
             onClick={handleSave}
-            // AQUI A COR: Botão CTA Principal com o VERDE REPPY
             className="px-4 py-2 bg-[#1bff17] text-gray-900 rounded-md text-sm font-bold hover:opacity-90 transition-opacity"
           >
             Salvar Alterações
@@ -235,7 +284,7 @@ const EditFilterModal = ({ isOpen, onClose, onConfirm, filter }) => {
 };
 
 /**
- * 4. NOVO: Modal de Confirmação de Exclusão
+ * 4. Modal de Confirmação de Exclusão
  */
 const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, filter }) => {
   if (!isOpen || !filter) return null;
@@ -263,7 +312,6 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, filter }) => {
           </button>
           <button
             onClick={() => onConfirm(filter.id)}
-            // UX: Botão de destruição deve ser VERMELHO
             className="px-4 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700"
           >
             Sim, Excluir
@@ -274,26 +322,27 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, filter }) => {
   );
 };
 
-
 /**
  * 5. Componente Principal da Seção
- * (Agora com gerenciamento de estado dos modais)
  */
-const FiltrosSection = () => {
+const FiltrosSection = ({ userData }) => {
   const [filters, setFilters] = useState(MOCKED_FILTERS);
-  
-  // Estado para controlar os modais: { type: 'edit' | 'delete' | null, filter: objeto_do_filtro }
   const [modalState, setModalState] = useState({ type: null, filter: null });
-  
   const navigate = useNavigate();
+  const { isFree, isBasic, isPremium } = useAuth();
 
-  // --- Handlers para Ações ---
+  // 🔥 VERIFICAR SE O USUÁRIO É FREE
+  const userIsFree = isFree();
+  const userPlan = userData?.planType || 'free';
 
+  console.log(`🔍 [FiltrosSection] Plano do usuário: ${userPlan}, É free: ${userIsFree}`);
+
+
+
+  // Handlers para Ações (apenas para planos pagos)
   const handleLoad = (filter) => {
     console.log("Carregar filtro:", filter.name);
-    // Lógica futura: passar o ID do filtro ou os critérios pela URL/estado
-    // Ex: navigate('/dashboard', { state: { loadFilter: filter.criteria } });
-    navigate('/dashboard'); // Redireciona como pedido
+    navigate('/dashboard');
   };
   
   const handleEdit = (filter) => {
@@ -310,11 +359,8 @@ const FiltrosSection = () => {
     setModalState({ type: null, filter: null });
   };
 
-  // --- Handlers de Confirmação dos Modais ---
-
   const handleConfirmEdit = (filterId, newName) => {
     console.log("Salvando:", filterId, "com novo nome:", newName);
-    // Simulação da edição:
     setFilters(prevFilters =>
       prevFilters.map(f => (f.id === filterId ? { ...f, name: newName } : f))
     );
@@ -323,23 +369,15 @@ const FiltrosSection = () => {
   
   const handleConfirmDelete = (filterId) => {
     console.log("Excluindo:", filterId);
-    // Simulação da exclusão:
     setFilters(prevFilters => prevFilters.filter(f => f.id !== filterId));
     handleCloseModal();
   };
 
   return (
-    // Fundo da página da paleta (bg-gray-50)
     <div className="bg-gray-50 min-h-full">
-      {/* 1. Cabeçalho (Cores atualizadas) */}
-      <div className="mb-6">
-        <h2 className="text-3xl font-bold text-gray-900">Filtros Salvos</h2>
-        <p className="mt-1 text-lg text-gray-600">
-          Gerencie e carregue seus filtros personalizados.
-        </p>
-      </div>
+
       
-      {/* 2. Grid de Filtros ou Estado Vazio */}
+      {/* Grid de Filtros ou Estado Vazio */}
       {filters.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filters.map((filter) => (
@@ -356,7 +394,7 @@ const FiltrosSection = () => {
         <EmptyState />
       )}
 
-      {/* 3. Renderização dos Modais (eles ficam invisíveis até serem ativados) */}
+      {/* Modais */}
       <EditFilterModal
         isOpen={modalState.type === 'edit'}
         onClose={handleCloseModal}

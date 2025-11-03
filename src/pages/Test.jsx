@@ -1,59 +1,80 @@
-// src/pages/Dashboard.jsx (ou onde quer que ele esteja)
-
-import React, { useState } from 'react';
-import Sidebar from '../components/test/layout/Sidebar';
-import Header from '../components/test/layout/Header';
-import MainContent from '../components/test/MainContent';
-// 1. Importar o modal de boas-vindas
-import WelcomeModal from '../components/test/sections/dashboard/WelcomeModal'; 
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import Sidebar from '../components/dashboard/layout/Sidebar';
+import Header from '../components/dashboard/layout/Header';
+import MainContent from '../components/dashboard/MainContent';
+import { useAuth } from '../contexts/AuthContext';
 
 /**
  * Componente da PÁGINA do Dashboard
  * Orquestra o layout e o estado principal
  */
-const Test = () => {
+const Dashboard = () => {
   // Estado para controlar qual seção está ativa
   const [activeSection, setActiveSection] = useState('dashboard');
   
   // Estado para controlar a sidebar mobile
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // --- LÓGICA DO MODAL DE BOAS-VINDAS ---
+  // 🔥 IMPORTAR TODOS OS DADOS DO USUÁRIO
+  const { 
+    hasActivePlan, 
+    hasNoPlan, 
+    loading, 
+    getPlanType,
+    getUserPlan,
+    isPremium,
+    isBasic,
+    isFree,
+    getUserRepublic,
+    getUserFilters,
+    getUserCalouros,
+    getRepublicMembers,
+    getRepublicInfo,
+    user
+  } = useAuth();
+  
+  const navigate = useNavigate();
 
-  // 2. Busca a config do localStorage ao carregar.
-  //    Se não existir, 'republicConfig' será 'null'.
-  const [republicConfig, setRepublicConfig] = useState(() => {
-    try {
-      // Tenta ler a configuração salva
-      const savedConfig = localStorage.getItem('republicConfig');
-      return savedConfig ? JSON.parse(savedConfig) : null;
-    } catch (e) {
-      console.error("Erro ao ler config do localStorage", e);
-      return null;
+  // 🔥 REDIRECIONA PARA PLANOS SE NÃO TIVER PLANO ATIVO
+  useEffect(() => {
+    if (!loading && hasNoPlan()) {
+      console.log('🟡 Usuário sem plano ativo, redirecionando para /planos');
+      navigate('/planos', { replace: true });
     }
-  });
+  }, [loading, hasNoPlan, navigate]);
 
-  // 3. O modal abre APENAS se a configuração (republicConfig) for 'null'
-  const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(!republicConfig);
+  // Se ainda está carregando, mostra loading
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Carregando seus dados...</p>
+        </div>
+      </div>
+    );
+  }
 
-  // 4. Função para fechar o modal e salvar os dados
-  const handleWelcomeModalSubmit = (config) => {
-    try {
-      // Salva no localStorage para não perguntar de novo
-      localStorage.setItem('republicConfig', JSON.stringify(config));
-      
-      setRepublicConfig(config); // Salva no estado
-      setIsWelcomeModalOpen(false); // Fecha o modal
-      
-      console.log("Configuração da República salva:", config);
-    } catch (e) {
-      console.error("Erro ao salvar config no localStorage", e);
-      // Mesmo com erro, fecha o modal para o usuário não ficar preso
-      setIsWelcomeModalOpen(false); 
-    }
+  // Se não tem plano ativo, não renderiza nada (já vai redirecionar)
+  if (hasNoPlan()) {
+    return null;
+  }
+
+  // 🔥 OBTER TODOS OS DADOS PARA PASSAR PARA AS SEÇÕES
+  const userData = {
+    planType: getPlanType(),
+    userPlan: getUserPlan(),
+    republic: getUserRepublic(),
+    republicInfo: getRepublicInfo(),
+    filters: getUserFilters(),
+    calouros: getUserCalouros(),
+    members: getRepublicMembers(),
+    userProfile: user?.user_profile,
+    isPremium: isPremium(),
+    isBasic: isBasic(),
+    isFree: isFree()
   };
-  // --- FIM DA LÓGICA DO MODAL ---
-
 
   // Lista de seções para passar ao Header (para os títulos)
   const allNavItems = [
@@ -66,8 +87,7 @@ const Test = () => {
   ];
 
   return (
-    // O div principal precisa ser 'relative' para o modal
-    <div className="relative min-h-screen bg-gray-100 font-sans">
+    <div className="flex min-h-screen bg-gray-100 font-sans">
       
       {/* --- SIDEBAR --- */}
       <Sidebar 
@@ -75,33 +95,30 @@ const Test = () => {
         setActiveSection={setActiveSection}
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
+        userData={userData}
       />
 
-      {/* --- CONTEÚDO PRINCIPAL (Header + Main) --- */}
-      <div className="flex-1 flex flex-col overflow-hidden lg:ml-80">
+      {/* --- CONTEÚDO PRINCIPAL --- */}
+      <div className="flex-1 flex flex-col min-h-screen lg:ml-80">
         
         {/* --- HEADER --- */}
         <Header 
           activeSection={activeSection}
           navItems={allNavItems}
           setSidebarOpen={setSidebarOpen}
+          userData={userData}
         />
 
-        {/* --- MAIN CONTENT (com scroll) --- */}
-        <main className="flex-1 overflow-x-hidden overflow-y-auto p-6 md:p-8 bg-gray-50">
-          <MainContent activeSection={activeSection} />
+        {/* --- MAIN CONTENT --- */}
+        <main className="flex-1 bg-gray-50 p-6 md:p-8">
+          <MainContent 
+            activeSection={activeSection} 
+            userData={userData}
+          />
         </main>
       </div>
-
-      {/* 5. RENDERIZAÇÃO DO MODAL DE BOAS-VINDAS */}
-      {/* Ele fica aqui no final. Como o modal tem 'position: fixed',
-        ele vai aparecer por cima de todo o conteúdo da página
-        enquanto 'isWelcomeModalOpen' for true.
-      */}
-      {isWelcomeModalOpen && <WelcomeModal onSubmit={handleWelcomeModalSubmit} />}
-
     </div>
   );
 };
 
-export default Test;
+export default Dashboard;

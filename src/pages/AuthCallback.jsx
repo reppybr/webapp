@@ -10,11 +10,22 @@ export default function AuthCallback() {
   const { user, loading, isAuthenticated, hasRepublic, hasActivePlan } = useAuth()
 
   useEffect(() => {
+    console.log('🔵 AuthCallback - Estado atual:', {
+      loading,
+      isAuthenticated: isAuthenticated(),
+      hasRepublic: hasRepublic(),
+      hasActivePlan: hasActivePlan(),
+      user: user
+    })
+
     if (loading) {
+      console.log('🟡 AuthCallback - Ainda carregando...')
       return
     }
 
+    // Se não está autenticado, vai para login
     if (!isAuthenticated()) {
+      console.log('🔴 AuthCallback - Não autenticado, redirecionando para login')
       navigate('/login', { replace: true })
       return
     }
@@ -24,18 +35,19 @@ export default function AuthCallback() {
     const billingFromUrl = searchParams.get('billing')
     const redirectFromUrl = searchParams.get('redirect')
 
-    console.log('🔵 AuthCallback - Parâmetros:', { 
+    console.log('🔵 AuthCallback - Parâmetros da URL:', { 
       planFromUrl, 
       billingFromUrl, 
-      redirectFromUrl,
-      hasRepublic: hasRepublic(),
-      hasActivePlan: hasActivePlan()
+      redirectFromUrl
     })
 
+    // 🔥 LÓGICA PRINCIPAL CORRIGIDA - VERIFICAÇÃO EM ORDEM
     if (planFromUrl) {
+      console.log('🟡 AuthCallback - Plano detectado na URL:', planFromUrl)
+      
       if (!hasRepublic()) {
         // Usuário não tem república - redireciona para completar cadastro COM OS PARÂMETROS
-        console.log('🟡 Usuário sem república mas com plano na URL, redirecionando para complete-registration')
+        console.log('🟡 AuthCallback - Usuário sem república, redirecionando para complete-registration com parâmetros')
         const params = new URLSearchParams({
           plan: planFromUrl,
           billing: billingFromUrl || 'monthly',
@@ -45,7 +57,7 @@ export default function AuthCallback() {
         return
       } else if (!hasActivePlan()) {
         // Usuário tem república mas não tem plano - vai para planos com os parâmetros
-        console.log('🟡 Usuário com república e plano na URL, redirecionando para planos')
+        console.log('🟡 AuthCallback - Usuário com república mas sem plano, redirecionando para planos')
         const params = new URLSearchParams({
           plan: planFromUrl,
           billing: billingFromUrl || 'monthly'
@@ -55,19 +67,19 @@ export default function AuthCallback() {
       }
     }
 
+    // 🔥 LÓGICA PADRÃO DE REDIRECIONAMENTO
     if (hasActivePlan()) {
-      console.log('✅ Usuário tem plano ativo, redirecionando para dashboard')
+      console.log('✅ AuthCallback - Usuário tem plano ativo, redirecionando para dashboard')
       navigate('/dashboard', { replace: true })
     } else if (hasRepublic()) {
-      console.log('🟡 Usuário tem república mas não tem plano, redirecionando para planos')
+      console.log('🟡 AuthCallback - Usuário tem república mas não tem plano, redirecionando para planos')
       navigate('/planos', { replace: true })
     } else {
-      console.log('🟡 Usuário não tem república, redirecionando para complete-registration')
+      console.log('🟡 AuthCallback - Usuário não tem república, redirecionando para complete-registration')
       navigate('/complete-registration', { replace: true })
     }
   }, [user, loading, isAuthenticated, hasRepublic, hasActivePlan, navigate, searchParams])
 
-  // ... (restante do componente igual)
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex items-center justify-center p-6">

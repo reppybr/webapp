@@ -358,7 +358,13 @@ export const AuthProvider = ({ children }) => {
   };
 
   const hasRepublic = () => {
-    return !!user?.user_profile?.republica;
+    const hasRep = !!user?.user_profile?.republica || !!user?.user_profile?.has_republic;
+    console.log('🔍 [AUTH] hasRepublic check:', {
+      hasRep,
+      republica: user?.user_profile?.republica,
+      has_republic: user?.user_profile?.has_republic
+    });
+    return hasRep;
   };
 
   // 🔥 MÉTODOS DE PLANO - ATUALIZADOS
@@ -489,15 +495,30 @@ export const AuthProvider = ({ children }) => {
     return currentCount < limits.max_filters;
   };
 
-  // 🔥 MÉTODO PARA FORÇAR ATUALIZAÇÃO DO PERFIL
   const refreshUserProfile = async () => {
     if (session) {
-      const userProfile = await fetchUserProfile(session.access_token);
-      setUser(prev => ({
-        ...prev,
-        user_profile: userProfile
-      }));
+      try {
+        console.log('🔄 [AUTH] Forçando atualização do perfil...');
+        const userProfile = await fetchUserProfile(session.access_token);
+        
+        // 🔥 CORREÇÃO: Atualização mais robusta do estado
+        setUser(prev => ({
+          ...prev,
+          user_profile: userProfile
+        }));
+        
+        console.log('✅ [AUTH] Perfil atualizado com sucesso:', {
+          hasRepublic: !!userProfile?.republica,
+          hasActivePlan: userProfile?.has_active_plan
+        });
+        
+        return userProfile;
+      } catch (error) {
+        console.error('🔴 [AUTH] Erro ao atualizar perfil:', error);
+        throw error;
+      }
     }
+    return null;
   };
 
   const value = {

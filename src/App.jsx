@@ -10,6 +10,7 @@ import Footer from './components/layout/Footer';
 
 // --- Importações de Páginas ---
 import Home from './pages/Home';
+import AboutUs from './pages/AboutUs';
 import Plans from './pages/Plans';
 import Services from './pages/Services';
 import Dashboard from './pages/Dashboard';
@@ -17,7 +18,8 @@ import Login from './pages/Login';
 import AuthCallback from './pages/AuthCallback';
 import CompleteRegistration from './pages/CompleteRegistration';
 import Test from './pages/Test';
-
+import Contact from './pages/Contact';
+import News from './pages/Novidades';
 /**
  * Componente de Layout (com Navbar e Footer)
  */
@@ -58,6 +60,9 @@ function App() {
               <Route path="/" element={<Home />} />
               <Route path="/planos" element={<Plans />} />
               <Route path="/servicos" element={<Services />} />
+              <Route path="/sobre-nos" element={<AboutUs />} />
+              <Route path="/contato" element={<Contact />} />
+              <Route path="/novidades" element={<News />} />
             </Route>
             <Route path="/checkout" element={<Checkout />} />
             {/* --- Rotas de Autenticação (sem layout) --- */}

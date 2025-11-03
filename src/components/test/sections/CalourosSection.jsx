@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { 
   FiStar, 
   FiChevronDown, 
@@ -7,31 +7,25 @@ import {
   FiPhone, 
   FiMinus,
   FiHeart,
-  FiFilter,
-  FiUserCheck
+  FiUserCheck,
+  FiRefreshCw,
+  FiAlertCircle
 } from 'react-icons/fi';
-import { MOCK_STUDENTS, ALL_CURSOS, ALL_CAMPI } from './dashboard/mockData'; // Importando mocks
+import { calouroService } from '../../../services/calouroService';
 
-// --- DADOS MOCADOS PARA ESTA SEÇÃO ---
-// Esta é a lista de *todos* os alunos que o usuário marcou (favorito ou status)
-// Em um app real, isso viria de uma API (ex: /api/calouros/selecionados)
-const MOCKED_CALOUROS_DATA = [
-  { ...MOCK_STUDENTS[0], isFavorited: true, status: 'Chamado' }, // Ana
-  { ...MOCK_STUDENTS[2], isFavorited: false, status: 'Sucesso' }, // Carla
-  { ...MOCK_STUDENTS[3], isFavorited: true, status: 'Nenhum' }, // Daniel
-  { ...MOCK_STUDENTS[4], isFavorited: true, status: 'Rejeitado' }, // Elisa
-  { ...MOCK_STUDENTS[6], isFavorited: false, status: 'Chamado' }, // Gabriela
-];
-// ------------------------------------
+// Função para normalizar strings
+const normalizeString = (str) => {
+  if (!str) return '';
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ');
+};
 
-const ALL_CHAMADAS = [1, 2, 3];
+// --- COMPONENTES REUTILIZADOS ---
 
-// --- COMPONENTES REUTILIZADOS E ADAPTADOS ---
-// (Estes são copiados e adaptados para esta seção)
-
-/**
- * Opções de Status com seus estilos
- */
 const statusOptions = {
   'Nenhum': { label: 'Nenhum', icon: FiMinus, bg: 'bg-gray-100', text: 'text-gray-700' },
   'Chamado': { label: 'Chamado', icon: FiPhone, bg: 'bg-blue-100', text: 'text-blue-700' },
@@ -39,12 +33,9 @@ const statusOptions = {
   'Rejeitado': { label: 'Rejeitado', icon: FiXCircle, bg: 'bg-red-100', text: 'text-red-700' },
 };
 
-/**
- * Dropdown de Status (Copiado)
- */
 const StatusSelector = ({ currentStatus, onStatusChange }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const activeStyle = statusOptions[currentStatus];
+  const activeStyle = statusOptions[currentStatus] || statusOptions['Nenhum'];
 
   const handleSelect = (status) => {
     onStatusChange(status);
@@ -86,127 +77,7 @@ const StatusSelector = ({ currentStatus, onStatusChange }) => {
   );
 };
 
-/**
- * Linha da Tabela (Adaptada para "Lifted State")
- * Recebe handlers do componente pai
- */
-const CalourosTableRow = ({ student, onToggleFavorite, onStatusChange }) => {
-  const { isFavorited, status } = student;
-
-  return (
-    <tr className="hover:bg-gray-50">
-      {/* Coluna 1: Favorito (Controlado pelo Pai) */}
-      <td className="px-6 py-4 whitespace-nowrap text-center">
-        <button 
-          onClick={() => onToggleFavorite(student.id)}
-          className={`p-1 rounded-full hover:bg-gray-200 transition-colors ${isFavorited ? 'text-yellow-500' : 'text-gray-400'}`}
-        >
-          <FiStar className={`w-5 h-5 ${isFavorited ? 'fill-current' : ''}`} />
-        </button>
-      </td>
-      
-      {/* Coluna 2: Nome */}
-      <td className="px-6 py-4 whitespace-nowrap">
-        <div className="text-sm font-medium text-gray-900">{student.nome}</div>
-      </td>
-
-      {/* Coluna 3: Chamada */}
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 text-center">
-        {student.chamada}ª
-      </td>
-      
-      {/* Coluna 4: Curso */}
-      <td className="px-6 py-4 whitespace-nowrap">
-        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-          {student.curso}
-        </span>
-      </td>
-      
-      {/* Coluna 5: Campus */}
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-        {student.campus}
-      </td>
-      
-      {/* Coluna 6: Gênero */}
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-        {student.genero}
-      </td>
-      
-      {/* Coluna 7: Status (Controlado pelo Pai) */}
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-        <StatusSelector 
-          currentStatus={status}
-          onStatusChange={(newStatus) => onStatusChange(student.id, newStatus)} 
-        />
-      </td>
-    </tr>
-  );
-};
-
-/**
- * Tabela Principal (Adaptada para "Lifted State")
- */
-const CalourosTable = ({ students, onToggleFavorite, onStatusChange }) => {
-  return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-full divide-y divide-gray-200">
-          
-          <thead className="bg-gray-50">
-            <tr>
-              <th scope="col" className="w-16 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Favoritos
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Nome
-              </th>
-              <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Chamada
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Curso
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Campus
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Gênero
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-            </tr>
-          </thead>
-          
-          <tbody className="bg-white divide-y divide-gray-200">
-            {students.length > 0 ? (
-              students.map((student) => (
-                <CalourosTableRow 
-                  key={student.id} 
-                  student={student}
-                  onToggleFavorite={onToggleFavorite}
-                  onStatusChange={onStatusChange}
-                />
-              ))
-            ) : (
-              <tr>
-                <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
-                  Nenhum calouro encontrado.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-};
-
-
-/**
- * Dropdown Multi-Select (Copiado)
- * (Cores da paleta atualizadas)
- */
+// Dropdown Multi-Select
 const MultiSelectDropdown = ({ title, options, selected, onChange }) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -243,10 +114,7 @@ const MultiSelectDropdown = ({ title, options, selected, onChange }) => {
                   checked={selected.includes(option)}
                   onChange={() => handleSelect(option)}
                 />
-                <span className="ml-3">
-                  {option}
-                  {typeof option === 'number' ? 'ª Chamada' : ''}
-                </span>
+                <span className="ml-3">{option}</span>
               </label>
             ))}
           </div>
@@ -256,11 +124,9 @@ const MultiSelectDropdown = ({ title, options, selected, onChange }) => {
   );
 };
 
-/**
- * Filtro de Gênero (Copiado)
- */
+
 const GenderFilter = ({ selected, onChange }) => {
-  const options = ['Todos', 'Masculino', 'Feminino'];
+  const options = ['Todos', 'Masculino', 'Feminino']; // 🔥 ADICIONAR "Outro"
   return (
     <div className="flex bg-gray-100 rounded-md p-0.5">
       {options.map((option) => (
@@ -281,12 +147,9 @@ const GenderFilter = ({ selected, onChange }) => {
   );
 };
 
-/**
- * Barra de Filtro (Adaptada)
- * (Botões de "Salvar" e "Carregar" removidos)
- */
-const CalourosFilterBar = ({ filters, setFilters }) => {
-  const { gender, cursos, campi, chamadas } = filters;
+// Barra de Filtro
+const CalourosFilterBar = ({ filters, setFilters, ALL_CURSOS, ALL_CAMPI, ALL_UNIVERSIDADES }) => {
+  const { gender, cursos, campi, universidades } = filters;
 
   return (
     <div className="mb-6 p-4 bg-white rounded-lg shadow-sm border border-gray-200">
@@ -323,14 +186,14 @@ const CalourosFilterBar = ({ filters, setFilters }) => {
           />
         </div>
 
-        {/* Filtro 4: Chamada */}
+        {/* Filtro 4: Universidade */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Chamada</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Universidade</label>
           <MultiSelectDropdown
-            title="Selecionar Chamadas"
-            options={ALL_CHAMADAS}
-            selected={chamadas}
-            onChange={(value) => setFilters(prev => ({ ...prev, chamadas: value }))}
+            title="Selecionar Universidades"
+            options={ALL_UNIVERSIDADES}
+            selected={universidades}
+            onChange={(value) => setFilters(prev => ({ ...prev, universidades: value }))}
           />
         </div>
       </div>
@@ -338,50 +201,430 @@ const CalourosFilterBar = ({ filters, setFilters }) => {
   );
 };
 
+const CalourosTableRow = ({ student, onToggleFavorite, onStatusChange }) => {
+  return (
+    <tr className="hover:bg-gray-50 border-b border-gray-200">
+      <td className="px-6 py-4 whitespace-nowrap text-center">
+        <button 
+          onClick={() => onToggleFavorite(student.id, !student.isFavorited)}
+          className={`p-1 rounded-full hover:bg-gray-200 transition-colors ${student.isFavorited ? 'text-yellow-500' : 'text-gray-400'}`}
+        >
+          <FiStar className={`w-5 h-5 ${student.isFavorited ? 'fill-current' : ''}`} />
+        </button>
+      </td>
+      
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="text-sm font-medium text-gray-900">{student.nome}</div>
+        {student.email && (
+          <div className="text-sm text-gray-500">{student.email}</div>
+        )}
+      </td>
+      
+      <td className="px-6 py-4 whitespace-nowrap">
+        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+          {student.curso}
+        </span>
+      </td>
+      
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+        {student.universidade}
+      </td>
+      
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+        {student.campus}
+      </td>
+      
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+        {student.genero === 'Masculino' ? 'M' : student.genero === 'Feminino' ? 'F' : student.genero}
+      </td>
+      
+      <td className="px-6 py-4 whitespace-nowrap">
+        <StatusSelector 
+          currentStatus={student.status}
+          onStatusChange={(newStatus) => onStatusChange(student.id, newStatus)} 
+        />
+      </td>
+    </tr>
+  );
+};
 
-/**
- * --- COMPONENTE PRINCIPAL DA SEÇÃO ---
- */
-const CalourosSection = () => {
-  // 'funil' ou 'favoritos'
+const CalourosTable = ({ students, onToggleFavorite, onStatusChange, loading }) => {
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <FiRefreshCw className="animate-spin h-8 w-8 text-gray-400 mx-auto mb-2" />
+            <p className="text-gray-500">Carregando calouros...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
+      <div className="overflow-x-auto">
+        <table className="w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="w-16 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Favorito
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Nome
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Curso
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Universidade
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Campus
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Gênero
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Status
+              </th>
+            </tr>
+          </thead>
+          
+          <tbody className="bg-white divide-y divide-gray-200">
+            {students.length > 0 ? (
+              students.map((student) => (
+                <CalourosTableRow 
+                  key={student.id} 
+                  student={student}
+                  onToggleFavorite={onToggleFavorite}
+                  onStatusChange={onStatusChange}
+                />
+              ))
+            ) : (
+              <tr>
+                <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
+                  <FiUserCheck className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                  <p className="text-lg font-medium text-gray-900 mb-2">Nenhum calouro encontrado</p>
+                  <p className="text-gray-600">
+                    {students.length === 0 ? 
+                      "Você ainda não tem calouros favoritos ou com status definido." :
+                      "Nenhum calouro corresponde aos filtros aplicados."
+                    }
+                  </p>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+// --- COMPONENTE PRINCIPAL ---
+const CalourosSection = ({ userData }) => {
   const [activeTab, setActiveTab] = useState('funil');
+  const [allStudents, setAllStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // A fonte de dados principal para esta página
-  const [allStudents, setAllStudents] = useState(MOCKED_CALOUROS_DATA);
-
-  // Estado dos filtros para o "Funil de Contato"
+  // Estado dos filtros para ambas as abas
   const [filters, setFilters] = useState({
     gender: 'Todos',
     cursos: [],
     campi: [],
-    chamadas: [],
+    universidades: [],
   });
 
-  // --- Handlers para atualizar o estado ---
+  // Criar chave consistente para estudantes
+  const createStudentKey = useCallback((name, course, university, campus) => {
+    return `${normalizeString(name)}-${normalizeString(course)}-${normalizeString(university)}-${normalizeString(campus)}`;
+  }, []);
+
+  // Buscar calouro no banco
+  const findCalouroInDatabase = useCallback(async (studentData) => {
+    try {
+      console.log('🟡 Buscando calouro no banco:', studentData.name);
+      
+      const response = await calouroService.getSelectedCalouros();
+      const calouros = response.calouros || [];
+      
+      const studentKey = createStudentKey(
+        studentData.name,
+        studentData.course,
+        studentData.university,
+        studentData.campus
+      );
+      
+      const calouroEncontrado = calouros.find(calouro => {
+        const calouroKey = createStudentKey(
+          calouro.name,
+          calouro.course,
+          calouro.university,
+          calouro.campus
+        );
+        return calouroKey === studentKey;
+      });
+      
+      if (calouroEncontrado) {
+        console.log(`✅ Calouro encontrado no banco: ${calouroEncontrado.name} (ID: ${calouroEncontrado.id}, Status: ${calouroEncontrado.status}, Favorito: ${calouroEncontrado.favourite})`);
+        return calouroEncontrado;
+      } else {
+        console.log(`❌ Calouro NÃO encontrado no banco: ${studentData.name}`);
+        return null;
+      }
+    } catch (error) {
+      console.error('🔴 Erro ao buscar calouro no banco:', error);
+      return null;
+    }
+  }, [createStudentKey]);
+
+  const fetchCalouros = async () => {
+    try {
+      setLoading(true);
+      const response = await calouroService.getSelectedCalouros();
+      
+      console.log('📊 Dados recebidos da API:', response);
+      
+      if (!response.calouros) {
+        setAllStudents([]);
+        return;
+      }
   
-  const handleToggleFavorite = (studentId) => {
-    setAllStudents(prevStudents =>
-      prevStudents.map(student =>
-        student.id === studentId
-          ? { ...student, isFavorited: !student.isFavorited }
-          : student
-      )
-    );
+      // Mapear status do backend para frontend
+      const statusDisplayMap = {
+        'pending': 'Nenhum',
+        'contacted': 'Chamado', 
+        'approved': 'Sucesso',
+        'rejected': 'Rejeitado'
+      };
+  
+      // 🔥 CORREÇÃO: Mapear gênero do banco (inglês) para português
+      const genderDisplayMap = {
+        'male': 'Masculino',
+        'female': 'Feminino',
+
+      };
+  
+      // Mapear os dados da API para o formato esperado pelo componente
+      const mappedStudents = response.calouros.map(calouro => {
+        // Converter gênero do inglês para português
+        const generoDisplay = genderDisplayMap[calouro.gender] || 'Outro';
+        
+        return {
+          id: calouro.id,
+          nome: calouro.name,
+          email: calouro.email,
+          curso: calouro.course,
+          universidade: calouro.university,
+          campus: calouro.campus,
+          genero: generoDisplay, // ✅ AGORA EM PORTUGUÊS
+          status: statusDisplayMap[calouro.status] || 'Nenhum',
+          isFavorited: calouro.favourite || false,
+          ano_entrada: calouro.entrance_year,
+          // Dados originais para criar/atualizar no banco
+          originalData: {
+            name: calouro.name,
+            course: calouro.course,
+            university: calouro.university,
+            campus: calouro.campus,
+            gender: calouro.gender, // Manter o original em inglês para o banco
+            entrance_year: calouro.entrance_year
+          }
+        };
+      });
+  
+      console.log(`✅ ${mappedStudents.length} calouros mapeados`);
+      console.log('📋 Exemplo de calouro:', mappedStudents[0]);
+      
+      setAllStudents(mappedStudents);
+      setError(null);
+    } catch (err) {
+      console.error('🔴 Erro ao buscar calouros:', err);
+      setError('Erro ao carregar dados dos calouros');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+  
+
+  useEffect(() => {
+    fetchCalouros();
+  }, []);
+
+  // Handlers atualizados
+  const handleToggleFavorite = async (studentId, isFavorited) => {
+    try {
+      const student = allStudents.find(s => s.id === studentId);
+      if (!student) return;
+
+      console.log(`🟡 Tentando ${isFavorited ? 'favoritar' : 'desfavoritar'}: ${student.nome} (ID: ${studentId})`);
+
+      let actualStudentId = studentId;
+
+      // 🔥 SEMPRE verificar se o estudante já existe no banco, independente do ID
+      const calouroExistente = await findCalouroInDatabase(student.originalData);
+      
+      if (calouroExistente) {
+        // 🔥 JÁ EXISTE NO BANCO - usar o ID existente
+        actualStudentId = calouroExistente.id;
+        console.log(`✅ Estudante encontrado no banco. ID: ${actualStudentId}, Status: ${calouroExistente.status}, Favorito: ${calouroExistente.favourite}`);
+      }
+
+      // 🔥 ATUALIZAR O FAVORITO NO BANCO
+      console.log(`🟡 Atualizando favorito no banco: ID ${actualStudentId} -> ${isFavorited}`);
+      await calouroService.updateFavorite(actualStudentId, isFavorited);
+
+      // Atualizar estado local
+      setAllStudents(prevStudents =>
+        prevStudents.map(student =>
+          student.id === studentId
+            ? { ...student, isFavorited }
+            : student
+        )
+      );
+
+      console.log(`✅ Favorito atualizado: ${student.nome} -> ${isFavorited}`);
+
+    } catch (err) {
+      console.error('🔴 Erro ao atualizar favorito:', err);
+      setError('Erro ao atualizar favorito. Tente novamente.');
+    }
   };
 
-  const handleStatusChange = (studentId, newStatus) => {
-    setAllStudents(prevStudents =>
-      prevStudents.map(student =>
-        student.id === studentId
-          ? { ...student, status: newStatus }
-          : student
-      )
-    );
+  const handleStatusChange = async (studentId, newStatus) => {
+    try {
+      const student = filteredStudents.find(s => s.id === studentId);
+      if (!student) return;
+  
+      console.log(`🟡 Tentando alterar status: ${student.nome} -> ${newStatus} (ID: ${studentId})`);
+  
+      // Mapear status do frontend para backend
+      const statusMapping = {
+        'Nenhum': 'pending',
+        'Chamado': 'contacted',
+        'Sucesso': 'approved', 
+        'Rejeitado': 'rejected'
+      };
+  
+      const statusBackend = statusMapping[newStatus] || 'pending';
+  
+      console.log(`🔍 DEBUG Status: Frontend "${newStatus}" -> Backend "${statusBackend}"`);
+  
+      let actualStudentId = studentId;
+  
+      // 🔥 SEMPRE verificar se o estudante já existe no banco, independente do ID
+      const calouroExistente = await findCalouroInDatabase(student.originalData);
+      
+      if (calouroExistente) {
+        // 🔥 JÁ EXISTE NO BANCO - usar o ID existente
+        actualStudentId = calouroExistente.id;
+        console.log(`✅ Estudante encontrado no banco. ID: ${actualStudentId}, Status atual: ${calouroExistente.status}, Novo status: ${statusBackend}`);
+        
+        // Atualizar o estado local com o ID correto
+        const studentKey = createStudentKey(
+          student.nome,
+          student.curso,
+          student.universidade,
+          student.unidade
+        );
+        
+        setStudentsMetadata(prev => ({
+          ...prev,
+          [studentKey]: {
+            ...prev[studentKey],
+            dbId: actualStudentId,
+            status: newStatus
+          }
+        }));
+      } else {
+        // 🔥 NÃO EXISTE NO BANCO - criar apenas se o status for diferente de "Nenhum"
+        if (newStatus !== 'Nenhum') {
+          console.log(`🟡 Criando calouro no banco com status: ${student.nome} -> ${statusBackend}`);
+          const createResponse = await calouroService.createCalouro({
+            ...student.originalData,
+            favourite: false,
+            status: statusBackend  // 🔥 Já envia em inglês
+          });
+          actualStudentId = createResponse.calouro_id;
+  
+          // Atualizar o estado local
+          const studentKey = createStudentKey(
+            student.nome,
+            student.curso,
+            student.universidade,
+            student.unidade
+          );
+          
+          setStudentsMetadata(prev => ({
+            ...prev,
+            [studentKey]: {
+              ...prev[studentKey],
+              dbId: actualStudentId,
+              status: newStatus
+            }
+          }));
+        } else {
+          console.log(`🟡 Ignorando: tentativa de definir status "Nenhum" para estudante que não existe no banco`);
+          return;
+        }
+      }
+  
+      // 🔥 ATUALIZAR O STATUS NO BANCO (apenas se não foi criado agora ou se o status mudou)
+      if (!calouroExistente || calouroExistente.status !== statusBackend) {
+        console.log(`🟡 Atualizando status no banco: ID ${actualStudentId} -> ${statusBackend}`);
+        await calouroService.updateStatus(actualStudentId, { status: statusBackend });
+      }
+  
+      // Atualizar o estado local
+      const studentKey = createStudentKey(
+        student.nome,
+        student.curso,
+        student.universidade,
+        student.unidade
+      );
+      
+      setStudentsMetadata(prev => ({
+        ...prev,
+        [studentKey]: {
+          ...prev[studentKey],
+          status: newStatus
+        }
+      }));
+  
+      console.log(`✅ Status atualizado: ${student.nome} -> ${newStatus} (${statusBackend} no banco)`);
+  
+    } catch (err) {
+      console.error('🔴 Erro ao atualizar status:', err);
+      alert('Erro ao atualizar status. Tente novamente.');
+    }
+  };
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchCalouros();
   };
 
   // --- Listas Memoizadas ---
 
-  // 1. A lista base do "Funil" (apenas alunos com status)
+  // Extrair opções únicas para os filtros dos dados da API
+  const { ALL_CURSOS, ALL_CAMPI, ALL_UNIVERSIDADES } = useMemo(() => {
+    const cursos = [...new Set(allStudents.map(student => student.curso).filter(Boolean))].sort();
+    const campi = [...new Set(allStudents.map(student => student.campus).filter(Boolean))].sort();
+    const universidades = [...new Set(allStudents.map(student => student.universidade).filter(Boolean))].sort();
+    
+    return { 
+      ALL_CURSOS: cursos.length > 0 ? cursos : ['Nenhum curso disponível'],
+      ALL_CAMPI: campi.length > 0 ? campi : ['Nenhum campus disponível'],
+      ALL_UNIVERSIDADES: universidades.length > 0 ? universidades : ['Nenhuma universidade disponível']
+    };
+  }, [allStudents]);
+
+  // 1. A lista base do "Funil" (apenas alunos com status diferente de 'Nenhum')
   const funilStudents = useMemo(() => {
     return allStudents.filter(student => student.status !== 'Nenhum');
   }, [allStudents]);
@@ -403,64 +646,110 @@ const CalourosSection = () => {
       if (filters.campi.length > 0 && !filters.campi.includes(student.campus)) {
         return false;
       }
-      if (filters.chamadas.length > 0 && !filters.chamadas.includes(student.chamada)) {
+      if (filters.universidades.length > 0 && !filters.universidades.includes(student.universidade)) {
         return false;
       }
       return true;
     });
   }, [funilStudents, filters]);
 
+  // 4. A lista de "Favoritos" *depois* de aplicar os filtros
+  const filteredFavoritedStudents = useMemo(() => {
+    return favoritedStudents.filter(student => {
+      if (filters.gender !== 'Todos' && student.genero !== filters.gender) {
+        return false;
+      }
+      if (filters.cursos.length > 0 && !filters.cursos.includes(student.curso)) {
+        return false;
+      }
+      if (filters.campi.length > 0 && !filters.campi.includes(student.campus)) {
+        return false;
+      }
+      if (filters.universidades.length > 0 && !filters.universidades.includes(student.universidade)) {
+        return false;
+      }
+      return true;
+    });
+  }, [favoritedStudents, filters]);
+
   // Determina qual lista mostrar na tabela
-  const studentsToDisplay = activeTab === 'funil' ? filteredFunilStudents : favoritedStudents;
+  const studentsToDisplay = activeTab === 'funil' ? filteredFunilStudents : filteredFavoritedStudents;
+
+  if (error && allStudents.length === 0) {
+    return (
+      <div className="bg-gray-50 min-h-full flex items-center justify-center py-12">
+        <div className="text-center max-w-md">
+          <FiAlertCircle className="mx-auto h-12 w-12 text-red-500 mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Erro ao carregar dados</h3>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button 
+            onClick={handleRefresh}
+            className="px-4 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 flex items-center mx-auto"
+          >
+            <FiRefreshCw className="mr-2" />
+            Tentar Novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="bg-gray-50 min-h-full">
-      {/* 1. Cabeçalho */}
-      <div className="mb-6">
-        <h2 className="text-3xl font-bold text-gray-900">Lista de Calouros</h2>
-        <p className="mt-1 text-lg text-gray-600">
-          Gerencie os calouros que você favoritou ou moveu para o funil.
-        </p>
-      </div>
+    <div className="bg-gray-50 min-h-full p-6">
+     
       
-      {/* 2. Abas de Navegação (Tabs) */}
       <div className="flex space-x-1 p-1 bg-gray-200 rounded-lg mb-6 max-w-md">
         <button
           onClick={() => setActiveTab('funil')}
           className={`flex-1 flex items-center justify-center px-4 py-2 rounded-md text-sm font-semibold transition-colors
             ${activeTab === 'funil' 
-              ? 'bg-gray-900 text-white shadow' // Cor "Premium"
+              ? 'bg-gray-900 text-white shadow'
               : 'text-gray-600 hover:bg-gray-100'
             }
           `}
         >
           <FiUserCheck className="w-5 h-5 mr-2" />
-          Funil de Contato
+          Funil de Contato ({funilStudents.length})
         </button>
         <button
           onClick={() => setActiveTab('favoritos')}
           className={`flex-1 flex items-center justify-center px-4 py-2 rounded-md text-sm font-semibold transition-colors
             ${activeTab === 'favoritos' 
-              ? 'bg-gray-900 text-white shadow' // Cor "Premium"
+              ? 'bg-gray-900 text-white shadow'
               : 'text-gray-600 hover:bg-gray-100'
             }
           `}
         >
           <FiHeart className="w-5 h-5 mr-2" />
-          Favoritos
+          Favoritos ({favoritedStudents.length})
         </button>
       </div>
 
-      {/* 3. Filtros (Condicionais) */}
-      {activeTab === 'funil' && (
-        <CalourosFilterBar filters={filters} setFilters={setFilters} />
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
+          <div className="flex items-center">
+            <FiAlertCircle className="text-red-400 mr-2" />
+            <p className="text-red-700">{error}</p>
+          </div>
+        </div>
       )}
 
-      {/* 4. Tabela de Calouros */}
+      {/* Filtros (para ambas as abas) */}
+      {(activeTab === 'funil' && funilStudents.length > 0) || (activeTab === 'favoritos' && favoritedStudents.length > 0) ? (
+        <CalourosFilterBar 
+          filters={filters} 
+          setFilters={setFilters}
+          ALL_CURSOS={ALL_CURSOS}
+          ALL_CAMPI={ALL_CAMPI}
+          ALL_UNIVERSIDADES={ALL_UNIVERSIDADES}
+        />
+      ) : null}
+
       <CalourosTable 
         students={studentsToDisplay}
         onToggleFavorite={handleToggleFavorite}
         onStatusChange={handleStatusChange}
+        loading={loading && allStudents.length === 0}
       />
     </div>
   );
