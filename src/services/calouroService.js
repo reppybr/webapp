@@ -4,7 +4,7 @@ import { apiService } from './apiService';
 export const calouroService = {
   // Criar novo calouro
   async createCalouro(calouroData) {
-    return await apiService.post('/calouros', calouroData); // Remove o /calouros duplicado
+    return await apiService.post('/calouros/', calouroData); // Remove o /calouros duplicado
   },
 
   // Buscar calouros selecionados (favoritos + funil)
@@ -40,4 +40,5 @@ export const calouroService = {
     return await apiService.get('/calouros/estatisticas');
   }
 };
+
 
