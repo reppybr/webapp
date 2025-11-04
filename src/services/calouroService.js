@@ -1,4 +1,4 @@
-services/calouroService.js
+// services/calouroService.js
 import { apiService } from './apiService';
 
 export const calouroService = {
@@ -40,3 +40,4 @@ export const calouroService = {
     return await apiService.get('/calouros/estatisticas');
   }
 };
+
