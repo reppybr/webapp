@@ -1,42 +1,33 @@
-// services/apiService.js
-import { supabase } from '../lib/supabase';
-
-// 🔥 USE A MESMA URL DO AUTHCONTEXT - CORRIGIDO
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api-umbb.onrender.com';
+ // services/apiService.js
+import { supabase } from '../lib/supabase'; // 👈 1. IMPORTE O SUPABASE
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 class ApiService {
   constructor() {
     this.baseURL = API_BASE_URL;
-    console.log('🟡 [API Service] Inicializado com URL:', this.baseURL);
   }
 
-  // 🔥 MÉTODO GETTOKEN IDÊNTICO AO QUE FUNCIONA NO AUTHCONTEXT
+  // 👇 2. SUBSTITUA ESTA FUNÇÃO
   async getToken() {
     try {
-      // 🔥 FORMA OFICIAL E CORRETA DE OBTER A SESSÃO
+      // Esta é a forma correta e oficial de pegar a sessão
       const { data: { session } } = await supabase.auth.getSession();
       
-      if (!session?.access_token) {
-        console.warn('🟡 [API Service] Nenhuma sessão ativa encontrada');
-        return null;
+      if (session?.access_token) {
+        return session.access_token;
       }
       
-      console.log('🟢 [API Service] Token obtido com sucesso');
-      return session.access_token;
-    } catch (error) {
-      console.error('🔴 [API Service] Erro ao obter token:', error);
+      return null; // Nenhuma sessão ativa
+    } catch (e) {
+      console.error('Erro ao obter sessão do Supabase no ApiService:', e);
       return null;
     }
   }
 
   async request(endpoint, options = {}) {
-    // 🔥 OBTER TOKEN PARA CADA REQUISIÇÃO
+    // O restante do arquivo continua igual...
     const token = await this.getToken();
     
-    console.log(`🟡 [API Service] Fazendo requisição para: ${this.baseURL}${endpoint}`);
-    console.log(`🟡 [API Service] Token presente: ${!!token}`);
-    console.log(`🟡 [API Service] Método: ${options.method || 'GET'}`);
-
     const config = {
       headers: {
         'Content-Type': 'application/json',
@@ -46,96 +37,50 @@ class ApiService {
       ...options,
     };
 
-    // 🔥 CORRIGIR: SEMPRE converter body para JSON se for objeto
     if (config.body && typeof config.body === 'object') {
       config.body = JSON.stringify(config.body);
     }
 
     try {
+      console.log(`🟡 [API] Fazendo requisição para: ${this.baseURL}${endpoint}`);
       const response = await fetch(`${this.baseURL}${endpoint}`, config);
       
-      console.log(`🟡 [API Service] Status da resposta: ${response.status}`);
-      console.log(`🟡 [API Service] URL completa: ${this.baseURL}${endpoint}`);
-      
       if (!response.ok) {
-        let errorData;
-        try {
-          errorData = await response.json();
-        } catch (parseError) {
-          const errorText = await response.text();
-          errorData = { error: errorText || `HTTP error! status: ${response.status}` };
-        }
-        
-        console.error(`🔴 [API Service] Erro HTTP ${response.status}:`, errorData);
+        const errorData = await response.json().catch(() => ({}));
+        // Agora, puxe a mensagem de erro correta do backend
         throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
-      console.log('🟢 [API Service] Resposta recebida com sucesso');
-      return data;
+      return await response.json();
     } catch (error) {
-      console.error(`🔴 [API Service] Erro em ${endpoint}:`, error);
-      
-      // 🔥 TRATAMENTO ESPECÍFICO PARA ERROS DE REDE
-      if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
-        throw new Error('Erro de conexão. Verifique sua internet e tente novamente.');
-      }
-      
+      console.error(`🔴 [API] Erro em ${endpoint}:`, error);
       throw error;
     }
   }
 
-  async get(endpoint) {
-    return this.request(endpoint, { method: 'GET' });
+  get(endpoint) {
+    return this.request(endpoint);
   }
 
-  async post(endpoint, data) {
+  post(endpoint, data) {
     return this.request(endpoint, {
       method: 'POST',
       body: data,
     });
   }
 
-  async put(endpoint, data) {
+  put(endpoint, data) {
     return this.request(endpoint, {
       method: 'PUT',
       body: data,
     });
   }
 
-  async delete(endpoint) {
+  delete(endpoint) {
     return this.request(endpoint, {
       method: 'DELETE',
     });
   }
-
-  // 🔥 MÉTODO EXTRA: HEALTH CHECK DA API
-  async healthCheck() {
-    try {
-      const response = await fetch(`${this.baseURL}/health`);
-      if (!response.ok) throw new Error('Health check failed');
-      return await response.json();
-    } catch (error) {
-      console.error('🔴 Health check failed:', error);
-      throw new Error('API não está respondendo');
-    }
-  }
-
-  // 🔥 MÉTODO EXTRA: TESTE DE AUTENTICAÇÃO
-  async testAuth() {
-    try {
-      const response = await this.get('/auth/me');
-      console.log('🟢 Teste de autenticação bem-sucedido:', response);
-      return response;
-    } catch (error) {
-      console.error('🔴 Teste de autenticação falhou:', error);
-      throw error;
-    }
-  }
 }
 
-// 🔥 INSTÂNCIA ÚNICA (SINGLETON)
 export const apiService = new ApiService();
-
-// 🔥 EXPORTAÇÃO PARA TESTES DIRETOS (OPCIONAL)
-export default apiService;
