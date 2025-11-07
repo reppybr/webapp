@@ -47,6 +47,20 @@ const Navbar = () => {
     setIsUserMenuOpen(false);
   }, [location]);
 
+  // *** CORREÇÃO 1: Trava o scroll do body quando o menu está aberto ***
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    
+    // Função de limpeza para garantir que o scroll volte ao normal
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]); // Executa toda vez que 'isOpen' mudar
+
   const handleLogout = async () => {
     try {
       await logout();
@@ -278,7 +292,10 @@ const Navbar = () => {
         {/* Menu Content */}
         <div className={`
           absolute top-0 right-0 w-80 h-full
-          bg-white/95 backdrop-blur-md shadow-2xl
+          
+          {/* *** CORREÇÃO 2: Removido 'bg-white/95' e 'backdrop-blur-md' *** */}
+          bg-white shadow-2xl 
+          
           transform transition-transform duration-300 ease-in-out
           ${isOpen ? 'translate-x-0' : 'translate-x-full'}
         `}>
