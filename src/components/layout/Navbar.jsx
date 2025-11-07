@@ -2,24 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
-// Ícones otimizados com design premium
-const MenuIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-  </svg>
-);
-
-const CloseIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-  </svg>
-);
-
-const UserIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-  </svg>
-);
+// Ícones (mantenha os mesmos)
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -50,23 +33,33 @@ const Navbar = () => {
     setIsUserMenuOpen(false);
   }, [location]);
 
-  // Trava o scroll do body quando o menu está aberto
+  // CORREÇÃO CRÍTICA: Bloqueio de scroll sem quebrar o layout
   useEffect(() => {
     if (isOpen) {
+      // Salva a posição atual do scroll
+      const scrollY = window.scrollY;
       document.body.style.overflow = 'hidden';
       document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
       document.body.style.width = '100%';
-      document.body.style.height = '100%';
     } else {
+      // Restaura a posição do scroll
+      const scrollY = document.body.style.top;
       document.body.style.overflow = 'unset';
-      document.body.style.position = 'static';
-      document.body.style.height = 'auto';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      
+      if (scrollY) {
+        window.scrollTo(0, parseInt(scrollY || '0') * -1);
+      }
     }
     
     return () => {
       document.body.style.overflow = 'unset';
-      document.body.style.position = 'static';
-      document.body.style.height = 'auto';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
     };
   }, [isOpen]);
 
@@ -120,7 +113,7 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           
-          {/* Logo com design premium */}
+          {/* Logo */}
           <Link 
             to="/" 
             className="flex items-center space-x-3 group flex-1 lg:flex-none"
@@ -139,7 +132,7 @@ const Navbar = () => {
             </div>
           </Link>
 
-          {/* Links Desktop - Centralizados */}
+          {/* Links Desktop */}
           <div className="hidden lg:flex lg:items-center lg:space-x-12 flex-1 justify-center">
             <Link 
               to="/servicos" 
@@ -300,7 +293,7 @@ const Navbar = () => {
             )}
           </div>
 
-          {/* Menu Mobile Button - Design Premium */}
+          {/* Menu Mobile Button */}
           <div className="lg:hidden flex items-center">
             <button
               onClick={() => setIsOpen(!isOpen)}
@@ -323,7 +316,7 @@ const Navbar = () => {
         </div>
       </div>
 
-      {/* Menu Mobile Overlay - DESIGN PREMIUM */}
+      {/* Menu Mobile Overlay - COM CORREÇÃO DO SCROLL */}
       <div className={`
         lg:hidden fixed inset-0 z-40 transition-all duration-500 ease-out
         ${isOpen 
@@ -331,13 +324,13 @@ const Navbar = () => {
           : 'opacity-0 invisible delay-300'
         }
       `}>
-        {/* Backdrop com blur premium */}
+        {/* Backdrop */}
         <div 
           className="absolute inset-0 bg-black/40 backdrop-blur-xl transition-all duration-500"
           onClick={() => setIsOpen(false)}
         />
         
-        {/* Menu Content - Design Expandido */}
+        {/* Menu Content */}
         <div 
           ref={menuRef}
           className={`
