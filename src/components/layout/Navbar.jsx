@@ -19,6 +19,7 @@ const UserIcon = () => (
     <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
   </svg>
 );
+
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -48,33 +49,16 @@ const Navbar = () => {
     setIsUserMenuOpen(false);
   }, [location]);
 
-  // CORREÇÃO CRÍTICA: Bloqueio de scroll sem quebrar o layout
+  // CORREÇÃO: Bloqueio de scroll simplificado
   useEffect(() => {
     if (isOpen) {
-      // Salva a posição atual do scroll
-      const scrollY = window.scrollY;
       document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
     } else {
-      // Restaura a posição do scroll
-      const scrollY = document.body.style.top;
       document.body.style.overflow = 'unset';
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
-      
-      if (scrollY) {
-        window.scrollTo(0, parseInt(scrollY || '0') * -1);
-      }
     }
     
     return () => {
       document.body.style.overflow = 'unset';
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
     };
   }, [isOpen]);
 
@@ -345,11 +329,11 @@ const Navbar = () => {
           onClick={() => setIsOpen(false)}
         />
         
-        {/* Menu Content */}
+        {/* Menu Content - CORREÇÃO: h-screen para ocupar toda a altura */}
         <div 
           ref={menuRef}
           className={`
-            absolute top-0 right-0 w-full sm:w-96 h-full
+            absolute top-0 right-0 w-full sm:w-96 h-screen
             bg-gradient-to-br from-white to-gray-50/95 backdrop-blur-2xl
             shadow-3xl border-l border-gray-200/50
             transform transition-all duration-500 ease-out
@@ -558,4 +542,3 @@ const Navbar = () => {
 };
 
 export default Navbar;
-
