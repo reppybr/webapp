@@ -527,13 +527,13 @@ const { ALL_CURSOS, ALL_CAMPI, ALL_UNIVERSIDADES } = useMemo(() => {
 
   // 1. A lista base do "Funil" (apenas alunos com status diferente de 'Nenhum')
   const funilStudents = useMemo(() => {
-    return allStudents.filter(student => student.status !== 'Nenhum');
-  }, [allStudents]);
+        return autoFilteredAllStudents.filter(student => student.status !== 'Nenhum');
+      }, [autoFilteredAllStudents]);
   
   // 2. A lista de "Favoritos"
   const favoritedStudents = useMemo(() => {
-    return allStudents.filter(student => student.isFavorited);
-  }, [allStudents]);
+        return autoFilteredAllStudents.filter(student => student.isFavorited);
+      }, [autoFilteredAllStudents]);
 
   // 3. A lista do "Funil" *depois* de aplicar os filtros
   const filteredFunilStudents = useMemo(() => {
@@ -555,9 +555,7 @@ const { ALL_CURSOS, ALL_CAMPI, ALL_UNIVERSIDADES } = useMemo(() => {
   // 4. A lista de "Favoritos" *depois* de aplicar os filtros
   const filteredFavoritedStudents = useMemo(() => {
     return favoritedStudents.filter(student => {
-      if (filters.gender !== 'Todos' && student.genero !== filters.gender) {
-        return false;
-      }
+      
       if (filters.cursos.length > 0 && !filters.cursos.includes(student.curso)) {
         return false;
       }
