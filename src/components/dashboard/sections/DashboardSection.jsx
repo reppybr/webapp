@@ -5,7 +5,7 @@ import StudentTable from './dashboard/StudentTable';
 import FilterBar from './dashboard/FilterBar';
 import SaveFilterModal from './dashboard/SaveFilterModal';
 import { calouroService } from '../../../services/calouroService';
-
+import * as XLSX from 'xlsx';
 const normalizeString = (str) => {
   if (!str) return '';
   return str
@@ -391,7 +391,7 @@ const DashboardSection = ({ userData }) => {
           
           } else {
             // NÃO EXISTE:
-    _       if (newStatus !== 'Nenhum') {
+           if (newStatus !== 'Nenhum') {
               // Criar apenas se o status for algo diferente de "Nenhum"
               console.log(`🟡 Criando calouro no banco com status: ${student.nome} -> ${statusBackend}`);
               const createResponse = await calouroService.createCalouro({
@@ -427,36 +427,72 @@ const DashboardSection = ({ userData }) => {
         }
       };
 
-  // Função para exportar planilha
-  const handleExportSheet = () => {
-    if (!filteredStudents.length) return;
-    
-    const dataToExport = filteredStudents.map(student => ({
-      Nome: student.nome,
-      Chamada: student.chamada,
-      Curso: student.curso,
-      Universidade: student.universidade,
-      Unidade: student.unidade,
-      Gênero: student.genero,
-      Cidade: student.cidade || 'N/A',
-      Favorito: student.isFavorited ? 'Sim' : 'Não',
-      Status: student.status
-    }));
-
-    const headers = Object.keys(dataToExport[0]).join(',');
-    const csvData = dataToExport.map(row => 
-      Object.values(row).map(value => `"${value}"`).join(',')
-    ).join('\n');
-    
-    const csv = `${headers}\n${csvData}`;
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `calouros-${userCity}-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+    const handleExportSheet = () => {
+          if (!filteredStudents.length) return;
+          
+          // 1. Mapeia os dados (limpos e prontos para o Excel)
+          const dataToExport = filteredStudents.map(student => ({
+            Nome: student.nome,
+            Chamada: student.chamada,
+            Curso: student.curso,
+            Universidade: student.universidade,
+            Unidade: student.unidade,
+            Gênero: student.genero,
+            Cidade: student.cidade || 'N/A',
+            Favorito: student.isFavorited ? 'Sim' : 'Não',
+            Status: student.status
+          }));
+      
+          // 2. Cria a planilha (worksheet) a partir do JSON
+          const ws = XLSX.utils.json_to_sheet(dataToExport);
+      
+          // 3. 🔥 UX WIN: Define larguras de coluna personalizadas (em caracteres)
+          // Isso evita que o usuário tenha que redimensionar tudo
+          const columnWidths = [
+            { wch: 35 }, // Nome
+            { wch: 10 }, // Chamada
+            { wch: 45 }, // Curso (geralmente longo)
+            { wch: 30 }, // Universidade
+            { wch: 30 }, // Unidade
+            { wch: 12 }, // Gênero
+            { wch: 20 }, // Cidade
+            { wch: 10 }, // Favorito
+            { wch: 12 }  // Status
+          ];
+          ws['!cols'] = columnWidths;
+      
+          // 4. 🔥 UX WIN: Estiliza o cabeçalho (Negrito + Fundo Cinza)
+          const headerStyle = {
+            font: { bold: true, sz: 12 },
+            fill: { fgColor: { rgb: "FFF0F0F0" } } // Cinza bem claro
+          };
+          // Pega as referências das células do cabeçalho (A1, B1, C1...)
+          const headerCells = ['A1', 'B1', 'C1', 'D1', 'E1', 'F1', 'G1', 'H1', 'I1'];
+          headerCells.forEach(cellRef => {
+            if (ws[cellRef]) {
+              ws[cellRef].s = headerStyle;
+            }
+          });
+          
+          // 5. 🔥 UX WIN: Adiciona AutoFiltro na tabela inteira
+          // Pega o range completo da tabela (Ex: 'A1:I501')
+          const dataRange = XLSX.utils.sheet_to_formula(ws);
+          ws['!autofilter'] = { ref: dataRange };
+          
+          // 6. 🔥 UX WIN: Congela a primeira linha (Painéis Congelados)
+          // O usuário pode rolar e os cabeçalhos ficam visíveis
+          ws['!views'] = [{ state: 'frozen', ySplit: 1 }];
+      
+          // 7. Cria o "livro" (workbook) e adiciona a planilha
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, 'Calouros'); // 'Calouros' é o nome da aba
+      
+          // 8. Define o nome do arquivo
+          const fileName = `calouros-${userCity}-${new Date().toISOString().split('T')[0]}.xlsx`;
+          
+          // 9. Gera e baixa o arquivo .xlsx
+          XLSX.writeFile(wb, fileName);
+        };
 
   const handleOpenSaveModal = () => {
     setIsModalOpen(true);
