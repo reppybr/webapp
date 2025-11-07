@@ -275,9 +275,9 @@ const Navbar = () => {
       </div>
 
       {/* Menu Mobile Overlay */}
-      {/* *** CORREÇÃO AQUI: Aumentado de z-40 para z-60 *** */}
+      {/* *** CORREÇÃO AQUI: Aumentado de z-40 para z-260 *** */}
       <div className={`
-        lg:hidden fixed inset-0 z-60 transition-all duration-300 ease-in-out
+        lg:hidden fixed inset-0 z-260 transition-all duration-300 ease-in-out
         ${isOpen 
           ? 'opacity-100 visible' 
           : 'opacity-0 invisible'
@@ -413,4 +413,5 @@ const Navbar = () => {
 };
 
 export default Navbar;
+
 
