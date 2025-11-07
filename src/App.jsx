@@ -27,7 +27,11 @@ const MainLayout = () => {
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
-      <main className="flex-grow">
+      {/* *** CORREÇÃO AQUI ***
+        Adicione 'pt-20' para empurrar o conteúdo para baixo
+        da navbar (que tem h-20)
+      */}
+      <main className="flex-grow pt-20">
         <Outlet />
       </main>
       <Footer />
