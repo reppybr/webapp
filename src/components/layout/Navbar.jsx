@@ -47,7 +47,7 @@ const Navbar = () => {
     setIsUserMenuOpen(false);
   }, [location]);
 
-  // *** CORREÇÃO 1: Trava o scroll do body quando o menu está aberto ***
+  // Trava o scroll do body quando o menu está aberto
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -55,11 +55,10 @@ const Navbar = () => {
       document.body.style.overflow = 'unset';
     }
     
-    // Função de limpeza para garantir que o scroll volte ao normal
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [isOpen]); // Executa toda vez que 'isOpen' mudar
+  }, [isOpen]); 
 
   const handleLogout = async () => {
     try {
@@ -276,8 +275,9 @@ const Navbar = () => {
       </div>
 
       {/* Menu Mobile Overlay */}
+      {/* *** CORREÇÃO AQUI: Aumentado de z-40 para z-60 *** */}
       <div className={`
-        lg:hidden fixed inset-0 z-40 transition-all duration-300 ease-in-out
+        lg:hidden fixed inset-0 z-60 transition-all duration-300 ease-in-out
         ${isOpen 
           ? 'opacity-100 visible' 
           : 'opacity-0 invisible'
@@ -292,10 +292,7 @@ const Navbar = () => {
         {/* Menu Content */}
         <div className={`
           absolute top-0 right-0 w-80 h-full
-          
-          {/* *** CORREÇÃO 2: Removido 'bg-white/95' e 'backdrop-blur-md' *** */}
           bg-white shadow-2xl 
-          
           transform transition-transform duration-300 ease-in-out
           ${isOpen ? 'translate-x-0' : 'translate-x-full'}
         `}>
