@@ -529,9 +529,7 @@ const Navbar = () => {
                   <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-white/0 opacity-0 group-hover:opacity-100 transition-all duration-500"></div>
                 </Link>
                 
-                <p className="text-center text-gray-500 text-sm mt-4 px-4">
-                  Junte-se a +100 repúblicas que já usam o Reppy
-                </p>
+           
               </div>
             )}
           </div>
@@ -542,3 +540,4 @@ const Navbar = () => {
 };
 
 export default Navbar;
+
