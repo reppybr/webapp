@@ -2,21 +2,21 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
-// Ícones otimizados (mantenha os mesmos)
+// Ícones otimizados com design premium
 const MenuIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
   </svg>
 );
 
 const CloseIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
   </svg>
 );
 
 const UserIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
   </svg>
 );
@@ -30,7 +30,6 @@ const Navbar = () => {
   
   const { user, isAuthenticated, hasRepublic, logout } = useAuth();
   
-  // Ref para detectar cliques fora do menu
   const menuRef = useRef(null);
   const userMenuRef = useRef(null);
 
@@ -51,24 +50,27 @@ const Navbar = () => {
     setIsUserMenuOpen(false);
   }, [location]);
 
-  // Trava o scroll do body quando o menu está aberto - CORRIGIDO
+  // Trava o scroll do body quando o menu está aberto
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
       document.body.style.position = 'fixed';
       document.body.style.width = '100%';
+      document.body.style.height = '100%';
     } else {
       document.body.style.overflow = 'unset';
       document.body.style.position = 'static';
+      document.body.style.height = 'auto';
     }
     
     return () => {
       document.body.style.overflow = 'unset';
       document.body.style.position = 'static';
+      document.body.style.height = 'auto';
     };
   }, [isOpen]);
 
-  // Fechar menu ao clicar fora - NOVO
+  // Fechar menu ao clicar fora
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -80,8 +82,11 @@ const Navbar = () => {
     };
 
     document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
     };
   }, []);
 
@@ -106,42 +111,42 @@ const Navbar = () => {
 
   return (
     <nav className={`
-      fixed top-0 w-full z-50 transition-all duration-300
+      fixed top-0 w-full z-50 transition-all duration-500
       ${scrolled 
-        ? 'bg-white/95 backdrop-blur-md shadow-lg border-b border-gray-100' 
-        : 'bg-white/90 backdrop-blur-sm'
+        ? 'bg-white/98 backdrop-blur-xl shadow-2xl border-b border-gray-100/80' 
+        : 'bg-white/95 backdrop-blur-lg'
       }
     `}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           
-          {/* Logo */}
+          {/* Logo com design premium */}
           <Link 
             to="/" 
-            className="flex items-center space-x-3 group"
+            className="flex items-center space-x-3 group flex-1 lg:flex-none"
             onClick={() => window.scrollTo(0, 0)}
           >
             <div className="relative">
               <img 
-                className="h-10 w-auto transition-transform group-hover:scale-110" 
+                className="h-12 w-auto transition-all duration-300 group-hover:scale-110 group-hover:rotate-2" 
                 src="/logo_preto.png"
                 alt="Reppy Logo" 
                 onError={(e) => { 
-                  e.currentTarget.src = 'https://placehold.co/160x40/1bff17/ffffff?text=Reppy&font=inter';
+                  e.currentTarget.src = 'https://placehold.co/160x48/1bff17/ffffff?text=Reppy&font=inter';
                   e.currentTarget.onerror = null;
                 }}
               />
             </div>
           </Link>
 
-          {/* Links Desktop */}
-          <div className="hidden lg:flex lg:items-center lg:space-x-8 absolute left-1/2 transform -translate-x-1/2">
+          {/* Links Desktop - Centralizados */}
+          <div className="hidden lg:flex lg:items-center lg:space-x-12 flex-1 justify-center">
             <Link 
               to="/servicos" 
               className={`
-                relative px-4 py-2 text-base font-medium transition-all duration-200
+                relative px-6 py-3 text-lg font-semibold transition-all duration-300
                 ${location.pathname === '/servicos' 
-                  ? 'text-gray-900 font-semibold' 
+                  ? 'text-gray-900' 
                   : 'text-gray-600 hover:text-gray-900'
                 }
                 group
@@ -149,17 +154,17 @@ const Navbar = () => {
             >
               Serviços
               <span className={`
-                absolute bottom-0 left-0 w-0 h-0.5 bg-[#1bff17] transition-all duration-300
-                ${location.pathname === '/servicos' ? 'w-full' : 'group-hover:w-full'}
+                absolute bottom-0 left-1/2 transform -translate-x-1/2 w-0 h-1 bg-gradient-to-r from-[#1bff17] to-[#00ff88] transition-all duration-500 rounded-full
+                ${location.pathname === '/servicos' ? 'w-4/5' : 'group-hover:w-4/5'}
               `}></span>
             </Link>
             
             <Link 
               to="/planos" 
               className={`
-                relative px-4 py-2 text-base font-medium transition-all duration-200
+                relative px-6 py-3 text-lg font-semibold transition-all duration-300
                 ${location.pathname === '/planos' 
-                  ? 'text-gray-900 font-semibold' 
+                  ? 'text-gray-900' 
                   : 'text-gray-600 hover:text-gray-900'
                 }
                 group
@@ -167,38 +172,42 @@ const Navbar = () => {
             >
               Planos
               <span className={`
-                absolute bottom-0 left-0 w-0 h-0.5 bg-[#1bff17] transition-all duration-300
-                ${location.pathname === '/planos' ? 'w-full' : 'group-hover:w-full'}
+                absolute bottom-0 left-1/2 transform -translate-x-1/2 w-0 h-1 bg-gradient-to-r from-[#1bff17] to-[#00ff88] transition-all duration-500 rounded-full
+                ${location.pathname === '/planos' ? 'w-4/5' : 'group-hover:w-4/5'}
               `}></span>
             </Link>
           </div>
 
           {/* CTA Desktop */}
-          <div className="hidden lg:flex lg:items-center lg:space-x-6">
+          <div className="hidden lg:flex lg:items-center lg:space-x-6 flex-1 justify-end">
             {isAuthenticated() ? (
               <div className="relative" ref={userMenuRef}>
                 <button
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                   className="
-                    flex items-center space-x-3
-                    bg-gray-50 hover:bg-gray-100
-                    border border-gray-200
-                    text-gray-700 font-medium
-                    px-4 py-2.5 
-                    rounded-xl
-                    transition-all duration-200
-                    hover:shadow-md
-                    focus:outline-none focus:ring-2 focus:ring-[#1bff17] focus:ring-opacity-50
+                    flex items-center space-x-4
+                    bg-gradient-to-r from-gray-50 to-white
+                    border border-gray-200/80
+                    text-gray-800 font-semibold
+                    px-6 py-3 
+                    rounded-2xl
+                    transition-all duration-300
+                    hover:shadow-2xl hover:scale-105
+                    hover:border-[#1bff17]/30
+                    focus:outline-none focus:ring-4 focus:ring-[#1bff17]/20
+                    shadow-lg
                   "
                 >
-                  <div className="flex items-center space-x-2">
-                    <UserIcon />
-                    <span className="max-w-32 truncate">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-gradient-to-r from-[#1bff17] to-[#00ff88] rounded-xl">
+                      <UserIcon />
+                    </div>
+                    <span className="max-w-40 truncate text-base">
                       {user?.user_profile?.full_name || user?.email?.split('@')[0] || 'Usuário'}
                     </span>
                   </div>
                   <svg 
-                    className={`w-4 h-4 transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`}
+                    className={`w-5 h-5 transition-transform duration-300 ${isUserMenuOpen ? 'rotate-180' : ''}`}
                     fill="none" 
                     stroke="currentColor" 
                     viewBox="0 0 24 24"
@@ -208,18 +217,18 @@ const Navbar = () => {
                 </button>
 
                 {isUserMenuOpen && (
-                  <div className="absolute top-full right-0 mt-2 w-64 bg-white/95 backdrop-blur-md rounded-xl shadow-2xl border border-gray-200 py-2 z-50">
+                  <div className="absolute top-full right-0 mt-3 w-72 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-200/80 py-3 z-50 transform transition-all duration-300 origin-top">
                     {/* Header do usuário */}
-                    <div className="px-4 py-3 border-b border-gray-100">
-                      <p className="font-semibold text-gray-900 truncate">
+                    <div className="px-5 py-4 border-b border-gray-100/80 bg-gradient-to-r from-gray-50 to-white/50 rounded-t-2xl">
+                      <p className="font-bold text-gray-900 truncate text-lg">
                         {user?.user_profile?.full_name || 'Usuário'}
                       </p>
-                      <p className="text-sm text-gray-500 truncate">
+                      <p className="text-sm text-gray-500 truncate mt-1">
                         {user?.email}
                       </p>
                       {user?.user_profile?.republica && (
-                        <p className="text-xs text-green-600 font-medium mt-1">
-                          {user.user_profile.republica.name}
+                        <p className="text-xs text-green-600 font-semibold mt-2 px-3 py-1 bg-green-50 rounded-full inline-block">
+                          🏠 {user.user_profile.republica.name}
                         </p>
                       )}
                     </div>
@@ -228,35 +237,43 @@ const Navbar = () => {
                     <Link
                       to={getDashboardPath()}
                       className="
-                        flex items-center space-x-3
-                        px-4 py-3
-                        text-gray-700 hover:bg-gray-50
-                        transition-all duration-200
+                        flex items-center space-x-4
+                        px-5 py-4
+                        text-gray-700 hover:bg-gradient-to-r hover:from-[#1bff17]/5 hover:to-[#00ff88]/5
+                        transition-all duration-300
+                        hover:translate-x-2
+                        group
                       "
                       onClick={() => setIsUserMenuOpen(false)}
                     >
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                      </svg>
-                      <span>{hasRepublic() ? 'Dashboard' : 'Completar Cadastro'}</span>
+                      <div className="p-2 bg-gray-100 rounded-lg group-hover:bg-gradient-to-r group-hover:from-[#1bff17] group-hover:to-[#00ff88] transition-all duration-300">
+                        <svg className="w-5 h-5 text-gray-600 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                        </svg>
+                      </div>
+                      <span className="font-medium">{hasRepublic() ? 'Dashboard' : 'Completar Cadastro'}</span>
                     </Link>
 
                     {/* Logout */}
                     <button
                       onClick={handleLogout}
                       className="
-                        flex items-center space-x-3
+                        flex items-center space-x-4
                         w-full text-left
-                        px-4 py-3
-                        text-red-600 hover:bg-red-50
-                        transition-all duration-200
-                        border-t border-gray-100
+                        px-5 py-4
+                        text-red-600 hover:bg-red-50/80
+                        transition-all duration-300
+                        border-t border-gray-100/80
+                        hover:translate-x-2
+                        group
                       "
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                      </svg>
-                      <span>Sair</span>
+                      <div className="p-2 bg-red-50 rounded-lg group-hover:bg-red-600 transition-all duration-300">
+                        <svg className="w-5 h-5 text-red-600 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                      </div>
+                      <span className="font-medium">Sair</span>
                     </button>
                   </div>
                 )}
@@ -265,29 +282,38 @@ const Navbar = () => {
               <Link 
                 to="/login" 
                 className="
-                  bg-gradient-to-r from-[#1bff17] to-[#1bff17] 
-                  text-white font-semibold px-9 py-3 
-                  rounded-xl shadow-lg shadow-green-500/25
-                  transition-all duration-300
-                  hover:shadow-xl hover:shadow-green-500/30
+                  relative
+                  bg-gradient-to-r from-[#1bff17] to-[#00ff88]
+                  text-white font-bold text-lg px-10 py-4 
+                  rounded-2xl shadow-2xl shadow-green-500/30
+                  transition-all duration-500
+                  hover:shadow-3xl hover:shadow-green-500/40
                   hover:scale-105
                   active:scale-95
+                  overflow-hidden
+                  group
                 "
               >
-                Entrar
+                <span className="relative z-10">Entrar</span>
+                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-white/0 opacity-0 group-hover:opacity-100 transition-all duration-500"></div>
               </Link>
             )}
           </div>
 
-          {/* Menu Mobile Button */}
+          {/* Menu Mobile Button - Design Premium */}
           <div className="lg:hidden flex items-center">
             <button
               onClick={() => setIsOpen(!isOpen)}
               className="
-                p-2 rounded-xl
-                bg-gray-50 hover:bg-gray-100
-                transition-all duration-200
-                focus:outline-none focus:ring-2 focus:ring-[#1bff17] focus:ring-opacity-50
+                relative
+                p-3 rounded-2xl
+                bg-gradient-to-r from-gray-50 to-white
+                border border-gray-200/80
+                transition-all duration-500
+                hover:shadow-2xl hover:scale-110
+                hover:border-[#1bff17]/30
+                focus:outline-none focus:ring-4 focus:ring-[#1bff17]/20
+                shadow-lg
               "
               aria-label="Menu"
             >
@@ -297,119 +323,196 @@ const Navbar = () => {
         </div>
       </div>
 
-      {/* Menu Mobile Overlay - CORRIGIDO */}
+      {/* Menu Mobile Overlay - DESIGN PREMIUM */}
       <div className={`
-        lg:hidden fixed inset-0 z-40 transition-all duration-300 ease-in-out
+        lg:hidden fixed inset-0 z-40 transition-all duration-500 ease-out
         ${isOpen 
           ? 'opacity-100 visible' 
-          : 'opacity-0 invisible'
+          : 'opacity-0 invisible delay-300'
         }
       `}>
-        {/* Backdrop */}
+        {/* Backdrop com blur premium */}
         <div 
-          className="absolute inset-0 bg-black/20 backdrop-blur-sm"
+          className="absolute inset-0 bg-black/40 backdrop-blur-xl transition-all duration-500"
           onClick={() => setIsOpen(false)}
         />
         
-        {/* Menu Content */}
+        {/* Menu Content - Design Expandido */}
         <div 
           ref={menuRef}
           className={`
-            absolute top-0 right-0 w-80 max-w-full h-full
-            bg-white shadow-2xl 
-            transform transition-transform duration-300 ease-in-out
+            absolute top-0 right-0 w-full sm:w-96 h-full
+            bg-gradient-to-br from-white to-gray-50/95 backdrop-blur-2xl
+            shadow-3xl border-l border-gray-200/50
+            transform transition-all duration-500 ease-out
             ${isOpen ? 'translate-x-0' : 'translate-x-full'}
             overflow-y-auto
           `}
         >
-          <div className="flex flex-col h-full pt-24 pb-8 px-6">
-            
-            {/* Logo Mobile */}
-            <div className="mb-12 px-2">
-              <img 
-                className="h-8 w-auto" 
-                src="/logo_preto.png"
-                alt="Reppy"
-                onError={(e) => { 
-                  e.currentTarget.src = 'https://placehold.co/120x32/1bff17/ffffff?text=Reppy&font=inter';
-                  e.currentTarget.onerror = null;
-                }}
-              />
+          {/* Header do Menu Mobile */}
+          <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-xl border-b border-gray-200/50">
+            <div className="flex items-center justify-between p-6">
+              <Link 
+                to="/" 
+                className="flex items-center"
+                onClick={() => setIsOpen(false)}
+              >
+                <img 
+                  className="h-10 w-auto" 
+                  src="/logo_preto.png"
+                  alt="Reppy"
+                  onError={(e) => { 
+                    e.currentTarget.src = 'https://placehold.co/120x40/1bff17/ffffff?text=Reppy&font=inter';
+                    e.currentTarget.onerror = null;
+                  }}
+                />
+              </Link>
+              
+              <button
+                onClick={() => setIsOpen(false)}
+                className="
+                  p-3 rounded-2xl
+                  bg-gradient-to-r from-gray-100 to-gray-200
+                  transition-all duration-300
+                  hover:scale-110 hover:shadow-lg
+                  active:scale-95
+                "
+              >
+                <CloseIcon />
+              </button>
             </div>
+          </div>
 
-            {/* Links Mobile */}
-            <div className="space-y-4">
+          {/* Conteúdo do Menu Mobile */}
+          <div className="flex flex-col h-full pt-8 pb-10 px-8">
+            
+            {/* Seção de Navegação Principal */}
+            <div className="space-y-3 mb-12">
               <Link 
                 to="/servicos" 
                 className={`
-                  block px-4 py-3 rounded-xl text-lg font-medium transition-all duration-200
+                  flex items-center space-x-4
+                  px-6 py-5 rounded-2xl text-xl font-semibold
+                  transition-all duration-500
                   ${location.pathname === '/servicos'
-                    ? 'bg-[#1bff17]/10 text-gray-900 border-l-4 border-[#1bff17]'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    ? 'bg-gradient-to-r from-[#1bff17]/20 to-[#00ff88]/20 text-gray-900 border-l-4 border-[#1bff17] shadow-lg'
+                    : 'text-gray-700 hover:bg-white hover:shadow-2xl hover:scale-105 hover:border-l-4 hover:border-gray-300'
                   }
+                  group
                 `}
                 onClick={() => setIsOpen(false)}
               >
-                Serviços
+                <div className={`p-3 rounded-xl transition-all duration-300 ${
+                  location.pathname === '/servicos' 
+                    ? 'bg-gradient-to-r from-[#1bff17] to-[#00ff88]' 
+                    : 'bg-gray-100 group-hover:bg-gradient-to-r group-hover:from-[#1bff17] group-hover:to-[#00ff88]'
+                }`}>
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <span>Serviços</span>
               </Link>
               
               <Link 
                 to="/planos" 
                 className={`
-                  block px-4 py-3 rounded-xl text-lg font-medium transition-all duration-200
+                  flex items-center space-x-4
+                  px-6 py-5 rounded-2xl text-xl font-semibold
+                  transition-all duration-500
                   ${location.pathname === '/planos'
-                    ? 'bg-[#1bff17]/10 text-gray-900 border-l-4 border-[#1bff17]'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    ? 'bg-gradient-to-r from-[#1bff17]/20 to-[#00ff88]/20 text-gray-900 border-l-4 border-[#1bff17] shadow-lg'
+                    : 'text-gray-700 hover:bg-white hover:shadow-2xl hover:scale-105 hover:border-l-4 hover:border-gray-300'
                   }
+                  group
                 `}
                 onClick={() => setIsOpen(false)}
               >
-                Planos
+                <div className={`p-3 rounded-xl transition-all duration-300 ${
+                  location.pathname === '/planos' 
+                    ? 'bg-gradient-to-r from-[#1bff17] to-[#00ff88]' 
+                    : 'bg-gray-100 group-hover:bg-gradient-to-r group-hover:from-[#1bff17] group-hover:to-[#00ff88]'
+                }`}>
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                </div>
+                <span>Planos</span>
               </Link>
+            </div>
 
-              {/* Menu do usuário no mobile */}
-              {isAuthenticated() && (
-                <>
-                  <div className="border-t border-gray-200 my-4 pt-4">
-                    <div className="px-4 py-2">
-                      <p className="font-semibold text-gray-900 text-sm">
+            {/* Menu do usuário no mobile */}
+            {isAuthenticated() && (
+              <div className="mb-12">
+                <div className="bg-gradient-to-r from-gray-50 to-white/80 rounded-2xl p-6 shadow-lg border border-gray-200/50 mb-6">
+                  <div className="flex items-center space-x-4 mb-4">
+                    <div className="p-3 bg-gradient-to-r from-[#1bff17] to-[#00ff88] rounded-xl">
+                      <UserIcon />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-gray-900 text-lg truncate">
                         {user?.user_profile?.full_name || 'Usuário'}
                       </p>
-                      <p className="text-xs text-gray-500 truncate">
+                      <p className="text-sm text-gray-500 truncate">
                         {user?.email}
                       </p>
                     </div>
                   </div>
+                  {user?.user_profile?.republica && (
+                    <div className="px-4 py-2 bg-green-50 rounded-xl border border-green-200/50">
+                      <p className="text-sm text-green-700 font-semibold text-center">
+                        🏠 {user.user_profile.republica.name}
+                      </p>
+                    </div>
+                  )}
+                </div>
 
-                  <Link 
-                    to={getDashboardPath()}
-                    className="
-                      block px-4 py-3 rounded-xl text-lg font-medium
-                      bg-[#1bff17]/10 text-gray-900 border-l-4 border-[#1bff17]
-                      transition-all duration-200
-                    "
-                    onClick={() => setIsOpen(false)}
-                  >
-                    {hasRepublic() ? 'Dashboard' : 'Completar Cadastro'}
-                  </Link>
+                <Link 
+                  to={getDashboardPath()}
+                  className="
+                    flex items-center space-x-4
+                    w-full px-6 py-5 rounded-2xl text-xl font-semibold
+                    bg-gradient-to-r from-[#1bff17]/10 to-[#00ff88]/10
+                    text-gray-900 border-l-4 border-[#1bff17]
+                    shadow-lg
+                    transition-all duration-500
+                    hover:shadow-2xl hover:scale-105
+                    active:scale-95
+                    mb-4
+                  "
+                  onClick={() => setIsOpen(false)}
+                >
+                  <div className="p-3 bg-gradient-to-r from-[#1bff17] to-[#00ff88] rounded-xl">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                    </svg>
+                  </div>
+                  <span>{hasRepublic() ? 'Dashboard' : 'Completar Cadastro'}</span>
+                </Link>
 
-                  <button
-                    onClick={() => {
-                      handleLogout();
-                      setIsOpen(false);
-                    }}
-                    className="
-                      w-full text-left
-                      block px-4 py-3 rounded-xl text-lg font-medium
-                      text-red-600 hover:bg-red-50
-                      transition-all duration-200
-                    "
-                  >
-                    Sair
-                  </button>
-                </>
-              )}
-            </div>
+                <button
+                  onClick={() => {
+                    handleLogout();
+                    setIsOpen(false);
+                  }}
+                  className="
+                    flex items-center space-x-4
+                    w-full px-6 py-5 rounded-2xl text-xl font-semibold
+                    text-red-600 bg-red-50/80 border-l-4 border-red-400
+                    transition-all duration-500
+                    hover:shadow-2xl hover:scale-105
+                    active:scale-95
+                  "
+                >
+                  <div className="p-3 bg-red-500 rounded-xl">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                  </div>
+                  <span>Sair</span>
+                </button>
+              </div>
+            )}
 
             {/* CTA Mobile - Só mostra se não estiver logado */}
             {!isAuthenticated() && (
@@ -418,17 +521,25 @@ const Navbar = () => {
                   to="/login" 
                   className="
                     w-full block text-center
-                    bg-gradient-to-r from-[#1bff17] to-[#14cc11]
-                    text-white font-semibold px-6 py-4
-                    rounded-xl shadow-lg
-                    transition-all duration-300
-                    hover:shadow-xl
+                    bg-gradient-to-r from-[#1bff17] to-[#00ff88]
+                    text-white font-bold text-xl px-8 py-5
+                    rounded-2xl shadow-2xl
+                    transition-all duration-500
+                    hover:shadow-3xl
+                    hover:scale-105
                     active:scale-95
+                    relative overflow-hidden
+                    group
                   "
                   onClick={() => setIsOpen(false)}
                 >
-                  Entrar
+                  <span className="relative z-10">Entrar na Plataforma</span>
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-white/0 opacity-0 group-hover:opacity-100 transition-all duration-500"></div>
                 </Link>
+                
+                <p className="text-center text-gray-500 text-sm mt-4 px-4">
+                  Junte-se a +100 repúblicas que já usam o Reppy
+                </p>
               </div>
             )}
           </div>
@@ -439,4 +550,3 @@ const Navbar = () => {
 };
 
 export default Navbar;
-
