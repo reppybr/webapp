@@ -526,9 +526,11 @@ const { ALL_CURSOS, ALL_CAMPI, ALL_UNIVERSIDADES } = useMemo(() => {
 }, [autoFilteredAllStudents]); // 👈 Dependência atualizada
 
   // 1. A lista base do "Funil" (apenas alunos com status diferente de 'Nenhum')
-  const funilStudents = useMemo(() => {
-        return autoFilteredAllStudents.filter(student => student.status !== 'Nenhum');
-      }, [autoFilteredAllStudents]);
+ const funilStudents = useMemo(() => {
+      return autoFilteredAllStudents.filter(student => 
+        student.status !== 'Nenhum' || student.isFavorited === true
+      );
+    }, [autoFilteredAllStudents]);
   
   // 2. A lista de "Favoritos"
   const favoritedStudents = useMemo(() => {
@@ -653,3 +655,4 @@ const { ALL_CURSOS, ALL_CAMPI, ALL_UNIVERSIDADES } = useMemo(() => {
 };
 
 export default CalourosSection;
+
