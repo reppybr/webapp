@@ -58,49 +58,7 @@ const DashboardSection = ({ userData }) => {
       return `${normalizeString(name)}-${normalizeString(course)}-${normalizeString(university)}-${normalizeString(campus)}`;
     }, []);
   
-    const findCalouroInDatabase = useCallback(async (studentData) => {
-        try {
-          console.log('🟡 Buscando calouro no banco:', studentData.name);
-          
-          // Buscar todos os calouros do usuário
-          const response = await calouroService.getSelectedCalouros();
-          const calouros = response.calouros || [];
-          
-          console.log(`📊 Total de calouros no banco: ${calouros.length}`);
-          
-          // Criar chave para o estudante que estamos procurando
-          const studentKey = createStudentKey(
-            studentData.name,
-            studentData.course,
-            studentData.university,
-            studentData.campus
-          );
-          
-          console.log(`🔑 Chave de busca: ${studentKey}`);
-          
-          // Procurar o calouro no array retornado
-          const calouroEncontrado = calouros.find(calouro => {
-            const calouroKey = createStudentKey(
-              calouro.name,
-              calouro.course,
-              calouro.university,
-              calouro.campus
-            );
-            return calouroKey === studentKey;
-          });
-          
-          if (calouroEncontrado) {
-            console.log(`✅ Calouro encontrado no banco: ${calouroEncontrado.name} (ID: ${calouroEncontrado.id}, Status: ${calouroEncontrado.status}, Favorito: ${calouroEncontrado.favourite})`);
-            return calouroEncontrado;
-          } else {
-            console.log(`❌ Calouro NÃO encontrado no banco: ${studentData.name}`);
-            return null;
-          }
-        } catch (error) {
-          console.error('🔴 Erro ao buscar calouro no banco:', error);
-          return null;
-        }
-      }, [createStudentKey]);
+ 
   
     // Carregar favoritos e status quando os dados da cidade forem carregados
     useEffect(() => {
@@ -307,214 +265,167 @@ const DashboardSection = ({ userData }) => {
   // Handlers para favoritos e status
 
   const handleToggleFavorite = async (studentId, isFavorited) => {
-    try {
-      const student = filteredStudents.find(s => s.id === studentId);
-      if (!student) return;
-  
-      console.log(`🟡 Tentando ${isFavorited ? 'favoritar' : 'desfavoritar'}: ${student.nome}`);
-      console.log(`🔍 DEBUG - Dados do estudante:`);
-      console.log(`  - Nome: ${student.nome}`);
-      console.log(`  - Gênero para exibição: ${student.genero}`);
-      console.log(`  - Gênero para backend: ${student.originalData.gender}`);
-      console.log(`  - Course: ${student.curso}`);
-      console.log(`  - Dados originais:`, student.originalData);
-  
-      console.log(`🟡 Tentando ${isFavorited ? 'favoritar' : 'desfavoritar'}: ${student.nome} (ID: ${studentId})`);
-  
-      let actualStudentId = studentId;
-  
-      // 🔥 SEMPRE verificar se o estudante já existe no banco, independente do ID
-      const calouroExistente = await findCalouroInDatabase(student.originalData);
-      
-      if (calouroExistente) {
-        // 🔥 JÁ EXISTE NO BANCO - usar o ID existente
-        actualStudentId = calouroExistente.id;
-        console.log(`✅ Estudante encontrado no banco. ID: ${actualStudentId}, Status: ${calouroExistente.status}, Favorito: ${calouroExistente.favourite}`);
-        
-        // Atualizar o estado local com o ID correto
-        const studentKey = createStudentKey(
-          student.nome,
-          student.curso,
-          student.universidade,
-          student.unidade
-        );
-        
-        setStudentsMetadata(prev => ({
-          ...prev,
-          [studentKey]: {
-            ...prev[studentKey],
-            dbId: actualStudentId,
-            isFavorited: calouroExistente.favourite // Usar o valor atual do banco
-          }
-        }));
-      } else {
-        // 🔥 NÃO EXISTE NO BANCO - criar apenas se for favoritar
-        if (isFavorited) {
-          console.log(`🟡 Criando calouro no banco para favoritar: ${student.nome}`);
-          const createResponse = await calouroService.createCalouro({
-            ...student.originalData,
-            favourite: true,
-            status: 'pending'
-          });
-          actualStudentId = createResponse.calouro_id;
-  
-          // Atualizar o estado local
-          const studentKey = createStudentKey(
-            student.nome,
-            student.curso,
-            student.universidade,
-            student.unidade
-          );
-          
-          setStudentsMetadata(prev => ({
-            ...prev,
-            [studentKey]: {
-              ...prev[studentKey],
-              dbId: actualStudentId,
-              isFavorited: true
-            }
-          }));
-        } else {
-          console.log(`🟡 Ignorando: tentativa de desfavoritar estudante que não existe no banco`);
-          return;
-        }
-      }
-  
-      // 🔥 ATUALIZAR O FAVORITO NO BANCO (apenas se não foi criado agora)
-      if (!calouroExistente || calouroExistente.favourite !== isFavorited) {
-        console.log(`🟡 Atualizando favorito no banco: ID ${actualStudentId} -> ${isFavorited}`);
-        await calouroService.updateFavorite(actualStudentId, isFavorited);
-      }
-  
-      // Atualizar o estado local
-      const studentKey = createStudentKey(
-        student.nome,
-        student.curso,
-        student.universidade,
-        student.unidade
-      );
-      
-      setStudentsMetadata(prev => ({
-        ...prev,
-        [studentKey]: {
-          ...prev[studentKey],
-          isFavorited: isFavorited
-        }
-      }));
-  
-      console.log(`✅ Favorito atualizado: ${student.nome} -> ${isFavorited}`);
-  
-    } catch (err) {
-      console.error('🔴 Erro ao atualizar favorito:', err);
-      alert('Erro ao atualizar favorito. Tente novamente.');
-    }
-  };
-
-  const handleStatusChange = async (studentId, newStatus) => {
-    try {
-      const student = filteredStudents.find(s => s.id === studentId);
-      if (!student) return;
-  
-      console.log(`🟡 Tentando alterar status: ${student.nome} -> ${newStatus} (ID: ${studentId})`);
-  
-      // Mapear status do frontend para backend
-      const statusMapping = {
-        'Nenhum': 'pending',
-        'Chamado': 'contacted',
-        'Sucesso': 'approved', 
-        'Rejeitado': 'rejected'
-      };
-  
-      const statusBackend = statusMapping[newStatus] || 'pending';
-  
-      let actualStudentId = studentId;
-  
-      // 🔥 SEMPRE verificar se o estudante já existe no banco, independente do ID
-      const calouroExistente = await findCalouroInDatabase(student.originalData);
-      
-      if (calouroExistente) {
-        // 🔥 JÁ EXISTE NO BANCO - usar o ID existente
-        actualStudentId = calouroExistente.id;
-        console.log(`✅ Estudante encontrado no banco. ID: ${actualStudentId}, Status: ${calouroExistente.status}, Favorito: ${calouroExistente.favourite}`);
-        
-        // Atualizar o estado local com o ID correto
-        const studentKey = createStudentKey(
-          student.nome,
-          student.curso,
-          student.universidade,
-          student.unidade
-        );
-        
-        setStudentsMetadata(prev => ({
-          ...prev,
-          [studentKey]: {
-            ...prev[studentKey],
-            dbId: actualStudentId,
-            status: newStatus
-          }
-        }));
-      } else {
-        // 🔥 NÃO EXISTE NO BANCO - criar apenas se o status for diferente de "Nenhum"
-        if (newStatus !== 'Nenhum') {
-          console.log(`🟡 Criando calouro no banco com status: ${student.nome} -> ${statusBackend}`);
-          const createResponse = await calouroService.createCalouro({
-            ...student.originalData,
-            favourite: false,
-            status: statusBackend
-          });
-          actualStudentId = createResponse.calouro_id;
-  
-          // Atualizar o estado local
-          const studentKey = createStudentKey(
-            student.nome,
-            student.curso,
-            student.universidade,
-            student.unidade
-          );
-          
-          setStudentsMetadata(prev => ({
-            ...prev,
-            [studentKey]: {
-              ...prev[studentKey],
-              dbId: actualStudentId,
-              status: newStatus
-            }
-          }));
-        } else {
-          console.log(`🟡 Ignorando: tentativa de definir status "Nenhum" para estudante que não existe no banco`);
-          return;
-        }
-      }
-  
-      // 🔥 ATUALIZAR O STATUS NO BANCO (apenas se não foi criado agora ou se o status mudou)
-      if (!calouroExistente || calouroExistente.status !== statusBackend) {
-        console.log(`🟡 Atualizando status no banco: ID ${actualStudentId} -> ${statusBackend}`);
-        await calouroService.updateStatus(actualStudentId, { status: statusBackend });
-      }
-  
-      // Atualizar o estado local
-      const studentKey = createStudentKey(
-        student.nome,
-        student.curso,
-        student.universidade,
-        student.unidade
-      );
-      
-      setStudentsMetadata(prev => ({
-        ...prev,
-        [studentKey]: {
-          ...prev[studentKey],
-          status: newStatus
-        }
-      }));
-  
-      console.log(`✅ Status atualizado: ${student.nome} -> ${newStatus}`);
-  
-    } catch (err) {
-      console.error('🔴 Erro ao atualizar status:', err);
-      alert('Erro ao atualizar status. Tente novamente.');
-    }
-  };
+        const student = filteredStudents.find(s => s.id === studentId);
+        if (!student) return;
+    
+        const studentKey = createStudentKey(
+          student.nome,
+          student.curso,
+          student.universidade,
+          student.unidade
+        );
+    
+        // 1. ATUALIZAÇÃO OTIMISTA
+        // Salva o estado anterior para rollback
+        const previousMetadata = { ...studentsMetadata };
+        
+        // Atualiza a UI imediatamente
+        setStudentsMetadata(prev => ({
+          ...prev,
+          [studentKey]: {
+            ...prev[studentKey],
+            isFavorited: isFavorited
+            // Se for a primeira interação, o dbId ainda não existe,
+            // será atualizado se a criação for bem-sucedida
+          }
+        }));
+    
+        // 2. AÇÃO ASSÍNCRONA
+        try {
+          console.log(`🟡 Ação de favorito iniciada: ${student.nome} -> ${isFavorited}`);
+    
+          // A mágica está aqui: não precisamos mais do findCalouroInDatabase.
+          // Se o ID NÃO começa com "temp-", ele já existe no banco.
+          const studentExistsInDb = !String(studentId).startsWith('temp-');
+          let actualStudentId = studentId;
+    
+          if (studentExistsInDb) {
+            // JÁ EXISTE: Apenas atualiza
+            console.log(`✅ Estudante existe no banco. ID: ${actualStudentId}. Atualizando...`);
+            await calouroService.updateFavorite(actualStudentId, isFavorited);
+          
+          } else {
+            // NÃO EXISTE:
+            if (isFavorited) {
+              // Criar apenas se for favoritar
+              console.log(`🟡 Criando calouro no banco para favoritar: ${student.nome}`);
+              const createResponse = await calouroService.createCalouro({
+                ...student.originalData,
+                favourite: true,
+                status: 'pending' // Status default ao criar
+              });
+              actualStudentId = createResponse.calouro_id;
+    
+              // Atualiza o estado com o ID real do banco
+              // (Isso é importante para as próximas ações)
+              setStudentsMetadata(prev => ({
+                ...prev,
+                [studentKey]: {
+                  ...prev[studentKey],
+                  dbId: actualStudentId, // Atualiza o ID
+                  isFavorited: true
+                }
+              }));
+            } else {
+              // Ignorando "desfavoritar" de quem não existe
+              console.log(`🟡 Ignorando: tentativa de desfavoritar estudante que não existe no banco`);
+            }
+          }
+          console.log(`✅ Ação de favorito concluída: ${student.nome}`);
+    
+        } catch (err) {
+          // 3. ROLLBACK EM CASO DE ERRO
+          console.error('🔴 Erro ao atualizar favorito, revertendo UI:', err);
+          alert(`Erro ao atualizar favorito para ${student.nome}. Tente novamente.`);
+          
+          // Reverte o estado inteiro para a versão salva
+          setStudentsMetadata(previousMetadata);
+        }
+      };
+    
+      const handleStatusChange = async (studentId, newStatus) => {
+        const student = filteredStudents.find(s => s.id === studentId);
+        if (!student) return;
+    
+        const studentKey = createStudentKey(
+          student.nome,
+          student.curso,
+          student.universidade,
+          student.unidade
+        );
+    
+        // 1. ATUALIZAÇÃO OTIMISTA
+        // Salva o estado anterior para rollback
+        const previousMetadata = { ...studentsMetadata };
+    
+        // Atualiza a UI imediatamente
+        setStudentsMetadata(prev => ({
+          ...prev,
+          [studentKey]: {
+            ...prev[studentKey],
+            status: newStatus
+          }
+        }));
+    
+        // 2. AÇÃO ASSÍNCRONA
+        try {
+          console.log(`🟡 Ação de status iniciada: ${student.nome} -> ${newStatus}`);
+    
+          // Mapear status do frontend para backend
+          const statusMapping = {
+            'Nenhum': 'pending',
+            'Chamado': 'contacted',
+            'Sucesso': 'approved',
+            'Rejeitado': 'rejected'
+          };
+          const statusBackend = statusMapping[newStatus] || 'pending';
+    
+          // Verifica se o estudante existe no DB pelo ID
+          const studentExistsInDb = !String(studentId).startsWith('temp-');
+          let actualStudentId = studentId;
+    
+          if (studentExistsInDb) {
+            // JÁ EXISTE: Apenas atualiza
+            console.log(`✅ Estudante existe no banco. ID: ${actualStudentId}. Atualizando status...`);
+            await calouroService.updateStatus(actualStudentId, { status: statusBackend });
+          
+          } else {
+            // NÃO EXISTE:
+    _       if (newStatus !== 'Nenhum') {
+              // Criar apenas se o status for algo diferente de "Nenhum"
+              console.log(`🟡 Criando calouro no banco com status: ${student.nome} -> ${statusBackend}`);
+              const createResponse = await calouroService.createCalouro({
+                ...student.originalData,
+                favourite: student.isFavorited || false, // Respeita se já foi favoritado
+                status: statusBackend
+              });
+              actualStudentId = createResponse.calouro_id;
+    
+              // Atualiza o estado com o ID real do banco
+              setStudentsMetadata(prev => ({
+                ...prev,
+                [studentKey]: {
+                  ...prev[studentKey],
+                  dbId: actualStudentId, // Atualiza o ID
+                  status: newStatus
+                }
+              }));
+            } else {
+              // Ignorando "status: Nenhum" de quem não existe
+              console.log(`🟡 Ignorando: tentativa de definir status "Nenhum" para estudante que não existe no banco`);
+            }
+          }
+          console.log(`✅ Ação de status concluída: ${student.nome}`);
+    
+        } catch (err) {
+          // 3. ROLLBACK EM CASO DE ERRO
+          console.error('🔴 Erro ao atualizar status, revertendo UI:', err);
+          alert(`Erro ao atualizar status para ${student.nome}. Tente novamente.`);
+          
+          // Reverte o estado inteiro
+          setStudentsMetadata(previousMetadata);
+        }
+      };
 
   // Função para exportar planilha
   const handleExportSheet = () => {
@@ -663,5 +574,6 @@ const DashboardSection = ({ userData }) => {
     </>
   );
 };
+
 
 export default DashboardSection;
