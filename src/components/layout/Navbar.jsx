@@ -184,7 +184,7 @@ const Navbar = () => {
 
                 {/* Dropdown Menu */}
                 {isUserMenuOpen && (
-                  <div className="absolute top-full right-0 mt-2 w-64 bg-white/95 backdrop-blur-md rounded-xl shadow-2xl border border-gray-200 py-2 z-50">
+                  <div className="absolute top-full right-0 mt-2 w-64 bg-white/95 backdrop-blur-md rounded-xl shadow-2xl border border-gray-200 py-2 z-350">
                     {/* Header do usuário */}
                     <div className="px-4 py-3 border-b border-gray-100">
                       <p className="font-semibold text-gray-900 truncate">
@@ -413,3 +413,4 @@ const Navbar = () => {
 };
 
 export default Navbar;
+
