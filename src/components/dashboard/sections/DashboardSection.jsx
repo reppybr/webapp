@@ -438,7 +438,7 @@ const DashboardSection = ({ userData }) => {
             Universidade: student.universidade,
             Unidade: student.unidade,
             Gênero: student.genero,
-            Cidade: student.cidade || 'N/A',
+            Cidade: userCity || 'N/A',
             Favorito: student.isFavorited ? 'Sim' : 'Não',
             Status: student.status
           }));
@@ -613,4 +613,5 @@ const DashboardSection = ({ userData }) => {
 
 
 export default DashboardSection;
+
 
