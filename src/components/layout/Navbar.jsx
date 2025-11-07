@@ -1,25 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
-// Ícones otimizados
-const MenuIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-  </svg>
-);
-
-const CloseIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-  </svg>
-);
-
-const UserIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-  </svg>
-);
+// Ícones otimizados (mantenha os mesmos)
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -29,6 +12,10 @@ const Navbar = () => {
   const navigate = useNavigate();
   
   const { user, isAuthenticated, hasRepublic, logout } = useAuth();
+  
+  // Ref para detectar cliques fora do menu
+  const menuRef = useRef(null);
+  const userMenuRef = useRef(null);
 
   // Efeito de scroll para navbar
   useEffect(() => {
@@ -47,23 +34,45 @@ const Navbar = () => {
     setIsUserMenuOpen(false);
   }, [location]);
 
-  // Trava o scroll do body quando o menu está aberto
+  // Trava o scroll do body quando o menu está aberto - CORRIGIDO
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
     } else {
       document.body.style.overflow = 'unset';
+      document.body.style.position = 'static';
     }
     
     return () => {
       document.body.style.overflow = 'unset';
+      document.body.style.position = 'static';
     };
-  }, [isOpen]); 
+  }, [isOpen]);
+
+  // Fechar menu ao clicar fora - NOVO
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const handleLogout = async () => {
     try {
       await logout();
       setIsUserMenuOpen(false);
+      setIsOpen(false);
       navigate('/');
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
@@ -89,7 +98,7 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           
-          {/* Logo com animação */}
+          {/* Logo */}
           <Link 
             to="/" 
             className="flex items-center space-x-3 group"
@@ -108,7 +117,7 @@ const Navbar = () => {
             </div>
           </Link>
 
-          {/* Links Desktop - Centralizados */}
+          {/* Links Desktop */}
           <div className="hidden lg:flex lg:items-center lg:space-x-8 absolute left-1/2 transform -translate-x-1/2">
             <Link 
               to="/servicos" 
@@ -150,8 +159,7 @@ const Navbar = () => {
           {/* CTA Desktop */}
           <div className="hidden lg:flex lg:items-center lg:space-x-6">
             {isAuthenticated() ? (
-              // Usuário logado - Menu do usuário
-              <div className="relative">
+              <div className="relative" ref={userMenuRef}>
                 <button
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                   className="
@@ -182,9 +190,8 @@ const Navbar = () => {
                   </svg>
                 </button>
 
-                {/* Dropdown Menu */}
                 {isUserMenuOpen && (
-                  <div className="absolute top-full right-0 mt-2 w-64 bg-white/95 backdrop-blur-md rounded-xl shadow-2xl border border-gray-200 py-2 z-350">
+                  <div className="absolute top-full right-0 mt-2 w-64 bg-white/95 backdrop-blur-md rounded-xl shadow-2xl border border-gray-200 py-2 z-50">
                     {/* Header do usuário */}
                     <div className="px-4 py-3 border-b border-gray-100">
                       <p className="font-semibold text-gray-900 truncate">
@@ -238,7 +245,6 @@ const Navbar = () => {
                 )}
               </div>
             ) : (
-              // Usuário não logado - Botão Entrar
               <Link 
                 to="/login" 
                 className="
@@ -274,10 +280,9 @@ const Navbar = () => {
         </div>
       </div>
 
-      {/* Menu Mobile Overlay */}
-      {/* *** CORREÇÃO AQUI: Aumentado de z-40 para z-260 *** */}
+      {/* Menu Mobile Overlay - CORRIGIDO */}
       <div className={`
-        lg:hidden fixed inset-0 z-260 transition-all duration-300 ease-in-out
+        lg:hidden fixed inset-0 z-40 transition-all duration-300 ease-in-out
         ${isOpen 
           ? 'opacity-100 visible' 
           : 'opacity-0 invisible'
@@ -290,12 +295,16 @@ const Navbar = () => {
         />
         
         {/* Menu Content */}
-        <div className={`
-          absolute top-0 right-0 w-80 h-full
-          bg-white shadow-2xl 
-          transform transition-transform duration-300 ease-in-out
-          ${isOpen ? 'translate-x-0' : 'translate-x-full'}
-        `}>
+        <div 
+          ref={menuRef}
+          className={`
+            absolute top-0 right-0 w-80 max-w-full h-full
+            bg-white shadow-2xl 
+            transform transition-transform duration-300 ease-in-out
+            ${isOpen ? 'translate-x-0' : 'translate-x-full'}
+            overflow-y-auto
+          `}
+        >
           <div className="flex flex-col h-full pt-24 pb-8 px-6">
             
             {/* Logo Mobile */}
@@ -413,5 +422,3 @@ const Navbar = () => {
 };
 
 export default Navbar;
-
-
