@@ -476,7 +476,7 @@ const DashboardSection = ({ userData }) => {
           
           // 5. 🔥 UX WIN: Adiciona AutoFiltro na tabela inteira
           // Pega o range completo da tabela (Ex: 'A1:I501')
-          const dataRange = XLSX.utils.sheet_to_formula(ws);
+          const dataRange = ws['!ref'];
           ws['!autofilter'] = { ref: dataRange };
           
           // 6. 🔥 UX WIN: Congela a primeira linha (Painéis Congelados)
@@ -613,3 +613,4 @@ const DashboardSection = ({ userData }) => {
 
 
 export default DashboardSection;
+
