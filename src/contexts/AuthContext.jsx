@@ -117,24 +117,39 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Login com Solana
-  const loginWithSolana = async () => {
-    try {
-      setError(null);
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'solana',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
+const loginWithSolana = async () => {
+    try {
+      setError(null);
 
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      console.error('Solana login error:', error);
-      setError('Erro ao fazer login com Solana');
-      throw error;
-    }
-  };
+      // 1. Verifica se a carteira Solflare (ou outra) está presente
+      // A Solflare se injeta como window.solana ou window.solflare
+      const solanaProvider = window.solflare || window.solana;
+      if (!solanaProvider) {
+        throw new Error('Carteira Solflare não detectada. Instale a extensão.');
+      }
+
+      // 2. Usa a função correta: signInWithWeb3
+      const { data, error } = await supabase.auth.signInWithWeb3({
+        chain: 'solana',
+        statement: 'Concordo em assinar para autenticar no Reppy.', // Mensagem obrigatória
+        wallet: solanaProvider // Passa o provider explicitamente
+      });
+
+      if (error) throw error;
+
+      // 3. Opcional: Força a atualização do perfil após o login Web3
+      if (data.session) {
+        await refreshUserProfile();
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Solana login error:', error);
+      // Exibe o erro real da carteira/Supabase se existir
+      setError(error.message || 'Erro ao fazer login com Solana');
+      throw error;
+    }
+  };
   const getUserCity = () => {
     return user?.user_profile?.user_city || null;
   };
@@ -577,5 +592,6 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
+
 
 export default AuthContext;
