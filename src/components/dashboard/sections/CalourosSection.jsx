@@ -125,46 +125,20 @@ const MultiSelectDropdown = ({ title, options, selected, onChange }) => {
 };
 
 
-const GenderFilter = ({ selected, onChange }) => {
-  const options = ['Todos', 'Masculino', 'Feminino']; // 🔥 ADICIONAR "Outro"
-  return (
-    <div className="flex bg-gray-100 rounded-md p-0.5">
-      {options.map((option) => (
-        <button
-          key={option}
-          onClick={() => onChange(option)}
-          className={`flex-1 px-3 py-1.5 text-sm font-medium rounded-md transition-colors
-            ${selected === option
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-600 hover:text-gray-900'
-            }
-          `}
-        >
-          {option}
-        </button>
-      ))}
-    </div>
-  );
-};
 
-// Barra de Filtro
+
 const CalourosFilterBar = ({ filters, setFilters, ALL_CURSOS, ALL_CAMPI, ALL_UNIVERSIDADES }) => {
-  const { gender, cursos, campi, universidades } = filters;
+  // 1. REMOVA 'gender' dos filtros recebidos
+  const { cursos, campi, universidades } = filters;
 
   return (
     <div className="mb-6 p-4 bg-white rounded-lg shadow-sm border border-gray-200">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* 2. AJUSTE O GRID de 4 para 3 colunas */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4"> 
         
-        {/* Filtro 1: Gênero */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Gênero</label>
-          <GenderFilter
-            selected={gender}
-            onChange={(value) => setFilters(prev => ({ ...prev, gender: value }))}
-          />
-        </div>
+        {/* 3. REMOVA O FILTRO DE GÊNERO (que estava aqui) */}
 
-        {/* Filtro 2: Cursos */}
+        {/* Filtro 1: Cursos (agora é o primeiro) */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Curso</label>
           <MultiSelectDropdown
@@ -175,7 +149,7 @@ const CalourosFilterBar = ({ filters, setFilters, ALL_CURSOS, ALL_CAMPI, ALL_UNI
           />
         </div>
 
-        {/* Filtro 3: Campus */}
+        {/* Filtro 2: Campus */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Campus</label>
           <MultiSelectDropdown
@@ -186,7 +160,7 @@ const CalourosFilterBar = ({ filters, setFilters, ALL_CURSOS, ALL_CAMPI, ALL_UNI
           />
         </div>
 
-        {/* Filtro 4: Universidade */}
+        {/* Filtro 3: Universidade */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Universidade</label>
           <MultiSelectDropdown
@@ -333,12 +307,11 @@ const CalourosSection = ({ userData }) => {
 
   // Estado dos filtros para ambas as abas
   const [filters, setFilters] = useState({
-    gender: 'Todos',
     cursos: [],
     campi: [],
     universidades: [],
   });
-
+  const republicType = userData?.republic?.tipo || 'mista';
   // Criar chave consistente para estudantes
   const createStudentKey = useCallback((name, course, university, campus) => {
     return `${normalizeString(name)}-${normalizeString(course)}-${normalizeString(university)}-${normalizeString(campus)}`;
@@ -451,153 +424,80 @@ const CalourosSection = ({ userData }) => {
     }
   };
   
-
+  const autoFilteredAllStudents = useMemo(() => {
+    if (!allStudents.length) return [];
+    
+    switch (republicType) {
+      case 'feminina':
+        return allStudents.filter(student => student.genero === 'Feminino');
+      case 'masculina':
+        return allStudents.filter(student => student.genero === 'Masculino');
+      case 'mista':
+      default:
+        return allStudents;
+    }
+  }, [allStudents, republicType]);
   useEffect(() => {
     fetchCalouros();
   }, []);
 
-  // Handlers atualizados
   const handleToggleFavorite = async (studentId, isFavorited) => {
+    // 1. Encontre o estudante na lista principal
+    const student = allStudents.find(s => s.id === studentId);
+    if (!student) return;
+
+    console.log(`🟡 Tentando ${isFavorited ? 'favoritar' : 'desfavoritar'}: ${student.nome} (ID: ${studentId})`);
+
     try {
-      const student = allStudents.find(s => s.id === studentId);
-      if (!student) return;
+      // 2. Chame a API (o student.id já é o ID real do banco)
+      await calouroService.updateFavorite(student.id, isFavorited);
 
-      console.log(`🟡 Tentando ${isFavorited ? 'favoritar' : 'desfavoritar'}: ${student.nome} (ID: ${studentId})`);
-
-      let actualStudentId = studentId;
-
-      // 🔥 SEMPRE verificar se o estudante já existe no banco, independente do ID
-      const calouroExistente = await findCalouroInDatabase(student.originalData);
-      
-      if (calouroExistente) {
-        // 🔥 JÁ EXISTE NO BANCO - usar o ID existente
-        actualStudentId = calouroExistente.id;
-        console.log(`✅ Estudante encontrado no banco. ID: ${actualStudentId}, Status: ${calouroExistente.status}, Favorito: ${calouroExistente.favourite}`);
-      }
-
-      // 🔥 ATUALIZAR O FAVORITO NO BANCO
-      console.log(`🟡 Atualizando favorito no banco: ID ${actualStudentId} -> ${isFavorited}`);
-      await calouroService.updateFavorite(actualStudentId, isFavorited);
-
-      // Atualizar estado local
+      // 3. Atualize o estado local
       setAllStudents(prevStudents =>
-        prevStudents.map(student =>
-          student.id === studentId
-            ? { ...student, isFavorited }
-            : student
+        prevStudents.map(s =>
+          s.id === studentId
+            ? { ...s, isFavorited: isFavorited } // Atualiza o favorito
+            : s
         )
       );
-
       console.log(`✅ Favorito atualizado: ${student.nome} -> ${isFavorited}`);
 
     } catch (err) {
       console.error('🔴 Erro ao atualizar favorito:', err);
-      setError('Erro ao atualizar favorito. Tente novamente.');
+      alert('Erro ao atualizar favorito. Tente novamente.');
     }
   };
 
   const handleStatusChange = async (studentId, newStatus) => {
+    // 1. Encontre o estudante na lista principal
+    const student = allStudents.find(s => s.id === studentId);
+    if (!student) return;
+
+    console.log(`🟡 Tentando alterar status: ${student.nome} -> ${newStatus} (ID: ${studentId})`);
+
+    // 2. Mapear status do frontend para backend
+    const statusMapping = {
+      'Nenhum': 'pending',
+      'Chamado': 'contacted',
+      'Sucesso': 'approved',
+      'Rejeitado': 'rejected'
+    };
+    const statusBackend = statusMapping[newStatus] || 'pending';
+
     try {
-      const student = filteredStudents.find(s => s.id === studentId);
-      if (!student) return;
-  
-      console.log(`🟡 Tentando alterar status: ${student.nome} -> ${newStatus} (ID: ${studentId})`);
-  
-      // Mapear status do frontend para backend
-      const statusMapping = {
-        'Nenhum': 'pending',
-        'Chamado': 'contacted',
-        'Sucesso': 'approved', 
-        'Rejeitado': 'rejected'
-      };
-  
-      const statusBackend = statusMapping[newStatus] || 'pending';
-  
-      console.log(`🔍 DEBUG Status: Frontend "${newStatus}" -> Backend "${statusBackend}"`);
-  
-      let actualStudentId = studentId;
-  
-      // 🔥 SEMPRE verificar se o estudante já existe no banco, independente do ID
-      const calouroExistente = await findCalouroInDatabase(student.originalData);
-      
-      if (calouroExistente) {
-        // 🔥 JÁ EXISTE NO BANCO - usar o ID existente
-        actualStudentId = calouroExistente.id;
-        console.log(`✅ Estudante encontrado no banco. ID: ${actualStudentId}, Status atual: ${calouroExistente.status}, Novo status: ${statusBackend}`);
-        
-        // Atualizar o estado local com o ID correto
-        const studentKey = createStudentKey(
-          student.nome,
-          student.curso,
-          student.universidade,
-          student.unidade
-        );
-        
-        setStudentsMetadata(prev => ({
-          ...prev,
-          [studentKey]: {
-            ...prev[studentKey],
-            dbId: actualStudentId,
-            status: newStatus
-          }
-        }));
-      } else {
-        // 🔥 NÃO EXISTE NO BANCO - criar apenas se o status for diferente de "Nenhum"
-        if (newStatus !== 'Nenhum') {
-          console.log(`🟡 Criando calouro no banco com status: ${student.nome} -> ${statusBackend}`);
-          const createResponse = await calouroService.createCalouro({
-            ...student.originalData,
-            favourite: false,
-            status: statusBackend  // 🔥 Já envia em inglês
-          });
-          actualStudentId = createResponse.calouro_id;
-  
-          // Atualizar o estado local
-          const studentKey = createStudentKey(
-            student.nome,
-            student.curso,
-            student.universidade,
-            student.unidade
-          );
-          
-          setStudentsMetadata(prev => ({
-            ...prev,
-            [studentKey]: {
-              ...prev[studentKey],
-              dbId: actualStudentId,
-              status: newStatus
-            }
-          }));
-        } else {
-          console.log(`🟡 Ignorando: tentativa de definir status "Nenhum" para estudante que não existe no banco`);
-          return;
-        }
-      }
-  
-      // 🔥 ATUALIZAR O STATUS NO BANCO (apenas se não foi criado agora ou se o status mudou)
-      if (!calouroExistente || calouroExistente.status !== statusBackend) {
-        console.log(`🟡 Atualizando status no banco: ID ${actualStudentId} -> ${statusBackend}`);
-        await calouroService.updateStatus(actualStudentId, { status: statusBackend });
-      }
-  
-      // Atualizar o estado local
-      const studentKey = createStudentKey(
-        student.nome,
-        student.curso,
-        student.universidade,
-        student.unidade
+      // 3. Chame a API (o student.id já é o ID real do banco)
+      await calouroService.updateStatus(student.id, { status: statusBackend });
+
+      // 4. Atualize o estado local
+      setAllStudents(prevStudents =>
+        prevStudents.map(s =>
+          s.id === studentId
+            ? { ...s, status: newStatus } // Atualiza o status
+            : s
+        )
       );
-      
-      setStudentsMetadata(prev => ({
-        ...prev,
-        [studentKey]: {
-          ...prev[studentKey],
-          status: newStatus
-        }
-      }));
-  
-      console.log(`✅ Status atualizado: ${student.nome} -> ${newStatus} (${statusBackend} no banco)`);
-  
+      console.log(`✅ Status atualizado: ${student.nome} -> ${newStatus}`);
+
     } catch (err) {
       console.error('🔴 Erro ao atualizar status:', err);
       alert('Erro ao atualizar status. Tente novamente.');
@@ -611,18 +511,19 @@ const CalourosSection = ({ userData }) => {
 
   // --- Listas Memoizadas ---
 
-  // Extrair opções únicas para os filtros dos dados da API
-  const { ALL_CURSOS, ALL_CAMPI, ALL_UNIVERSIDADES } = useMemo(() => {
-    const cursos = [...new Set(allStudents.map(student => student.curso).filter(Boolean))].sort();
-    const campi = [...new Set(allStudents.map(student => student.campus).filter(Boolean))].sort();
-    const universidades = [...new Set(allStudents.map(student => student.universidade).filter(Boolean))].sort();
-    
-    return { 
-      ALL_CURSOS: cursos.length > 0 ? cursos : ['Nenhum curso disponível'],
-      ALL_CAMPI: campi.length > 0 ? campi : ['Nenhum campus disponível'],
-      ALL_UNIVERSIDADES: universidades.length > 0 ? universidades : ['Nenhuma universidade disponível']
-    };
-  }, [allStudents]);
+// ✅ DEPOIS
+const { ALL_CURSOS, ALL_CAMPI, ALL_UNIVERSIDADES } = useMemo(() => {
+  // 👇 Use a lista pré-filtrada
+  const cursos = [...new Set(autoFilteredAllStudents.map(student => student.curso).filter(Boolean))].sort();
+  const campi = [...new Set(autoFilteredAllStudents.map(student => student.campus).filter(Boolean))].sort();
+  const universidades = [...new Set(autoFilteredAllStudents.map(student => student.universidade).filter(Boolean))].sort();
+  
+  return { 
+    ALL_CURSOS: cursos.length > 0 ? cursos : [], // Ajustado para retornar array vazio
+    ALL_CAMPI: campi.length > 0 ? campi : [],
+    ALL_UNIVERSIDADES: universidades.length > 0 ? universidades : []
+  };
+}, [autoFilteredAllStudents]); // 👈 Dependência atualizada
 
   // 1. A lista base do "Funil" (apenas alunos com status diferente de 'Nenhum')
   const funilStudents = useMemo(() => {
@@ -637,9 +538,7 @@ const CalourosSection = ({ userData }) => {
   // 3. A lista do "Funil" *depois* de aplicar os filtros
   const filteredFunilStudents = useMemo(() => {
     return funilStudents.filter(student => {
-      if (filters.gender !== 'Todos' && student.genero !== filters.gender) {
-        return false;
-      }
+    
       if (filters.cursos.length > 0 && !filters.cursos.includes(student.curso)) {
         return false;
       }
