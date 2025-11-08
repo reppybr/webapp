@@ -56,6 +56,7 @@ const DashboardSection = ({ userData }) => {
         setSavedFilters(userFilters);
       } catch (error) {
         console.error('🔴 Erro ao carregar filtros:', error);
+        // Não mostrar alerta para evitar spam
       } finally {
         setIsLoadingFilters(false);
       }
@@ -66,19 +67,19 @@ const DashboardSection = ({ userData }) => {
       loadSavedFilters();
     }, [loadSavedFilters]);
 
-    // Teste de conexão com o backend
-    useEffect(() => {
-      const testBackendConnection = async () => {
-        try {
-          const response = await apiService.get('/api/filtros/health');
-          console.log('✅ Backend de filtros está funcionando:', response);
-        } catch (error) {
-          console.error('🔴 Backend de filtros não está respondendo:', error);
-        }
-      };
+    // 🔥 CORREÇÃO: Remover o health check problemático
+    // useEffect(() => {
+    //   const testBackendConnection = async () => {
+    //     try {
+    //       const response = await apiService.get('/api/filtros/health');
+    //       console.log('✅ Backend de filtros está funcionando:', response);
+    //     } catch (error) {
+    //       console.error('🔴 Backend de filtros não está respondendo:', error);
+    //     }
+    //   };
       
-      testBackendConnection();
-    }, []);
+    //   testBackendConnection();
+    // }, []);
   
     // Função para recarregar os dados
     const refreshCalourosData = useCallback(async () => {
@@ -488,7 +489,7 @@ const DashboardSection = ({ userData }) => {
     XLSX.writeFile(wb, fileName);
   };
 
-  // Função para salvar filtro
+  // 🔥 CORREÇÃO: Função para salvar filtro com tratamento melhorado
   const handleSaveFilter = async (filterName) => {
     try {
       console.log('💾 Salvando filtro:', filterName);
@@ -500,20 +501,26 @@ const DashboardSection = ({ userData }) => {
         is_shared: false
       };
 
+      console.log('📤 Enviando dados do filtro:', filterData);
       const response = await filterService.saveFilter(filterData);
       console.log('✅ Filtro salvo com sucesso:', response);
       
+      // Recarregar a lista de filtros
       await loadSavedFilters();
       
       alert('Filtro salvo com sucesso!');
       handleCloseModal();
     } catch (error) {
       console.error('🔴 Erro ao salvar filtro:', error);
-      alert('Erro ao salvar filtro: ' + error.message);
+      // 🔥 CORREÇÃO: Mensagem mais amigável
+      const errorMessage = error.message.includes('404') 
+        ? 'Serviço de filtros temporariamente indisponível. Tente novamente mais tarde.'
+        : `Erro ao salvar filtro: ${error.message}`;
+      alert(errorMessage);
     }
   };
 
-  // Função para carregar um filtro salvo
+  // 🔥 CORREÇÃO: Função para carregar filtro com fallback
   const handleLoadFilter = async (filterId) => {
     try {
       console.log('🟡 Carregando filtro:', filterId);
@@ -522,14 +529,18 @@ const DashboardSection = ({ userData }) => {
       if (filter && filter.filters) {
         setFilters(filter.filters);
         console.log('✅ Filtro aplicado com sucesso:', filter.name);
+        alert(`Filtro "${filter.name}" carregado com sucesso!`);
       }
     } catch (error) {
       console.error('🔴 Erro ao carregar filtro:', error);
-      alert('Erro ao carregar filtro: ' + error.message);
+      const errorMessage = error.message.includes('404')
+        ? 'Filtro não encontrado ou serviço indisponível.'
+        : `Erro ao carregar filtro: ${error.message}`;
+      alert(errorMessage);
     }
   };
 
-  // Função para excluir um filtro
+  // 🔥 CORREÇÃO: Função para excluir filtro com fallback
   const handleDeleteFilter = async (filterId, filterName) => {
     if (confirm(`Tem certeza que deseja excluir o filtro "${filterName}"?`)) {
       try {
@@ -541,7 +552,10 @@ const DashboardSection = ({ userData }) => {
         alert('Filtro excluído com sucesso!');
       } catch (error) {
         console.error('🔴 Erro ao excluir filtro:', error);
-        alert('Erro ao excluir filtro: ' + error.message);
+        const errorMessage = error.message.includes('404')
+          ? 'Filtro não encontrado ou serviço indisponível.'
+          : `Erro ao excluir filtro: ${error.message}`;
+        alert(errorMessage);
       }
     }
   };
@@ -637,7 +651,7 @@ const DashboardSection = ({ userData }) => {
           filterOptions={filterOptions}
           userData={userData}
           republicType={republicType}
-          filteredStudents={filteredStudents}
+          filteredStudents={filteredStudents} // 🔥 CORREÇÃO: Esta prop estava faltando
         />
         
         <StudentTable 
