@@ -191,8 +191,19 @@ const ActiveFilters = ({ filters, onRemoveFilter, republicType }) => {
   );
 };
 
-// Componente principal da Barra de Filtros
-const FilterBar = ({ filters, setFilters, onSaveFilter, onExportSheet, filterOptions = {}, userData = {}, republicType = 'mista' }) => {
+const FilterBar = ({ 
+  filters, 
+  setFilters, 
+  onSaveFilter, 
+  onExportSheet, 
+  onLoadFilter, // 👈 NOVA PROP
+  onDeleteFilter, // 👈 NOVA PROP
+  savedFilters = [], // 👈 NOVA PROP
+  isLoadingFilters = false, // 👈 NOVA PROP
+  filterOptions = {}, 
+  userData = {}, 
+  republicType = 'mista' 
+}) => {
   const { cursos, universidades, unidades, chamadas } = filters;
   
   // Garantir que filterOptions sempre tenha valores padrão
@@ -241,16 +252,15 @@ const FilterBar = ({ filters, setFilters, onSaveFilter, onExportSheet, filterOpt
     }
   };
 
-  // Mock de filtros salvos
-  const MOCKED_SAVED_FILTERS = [
-    { id: 1, name: 'Engenharias - Unicamp' },
-    { id: 2, name: 'Saúde' },
-    { id: 3, name: 'FT e FCA' },
-  ];
-
-  const handleLoadFilter = (filterName) => {
-    console.log("Carregar filtro:", filterName);
+  const handleLoadFilter = (filter) => {
+    console.log('🟡 Carregando filtro:', filter);
+    onLoadFilter(filter.id);
     setIsLoadMenuOpen(false);
+  };
+
+  const handleDeleteFilter = (e, filter) => {
+    e.stopPropagation(); // Impede que o evento de carregar seja acionado
+    onDeleteFilter(filter.id, filter.name);
   };
 
   return (
@@ -337,7 +347,10 @@ const FilterBar = ({ filters, setFilters, onSaveFilter, onExportSheet, filterOpt
       <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 rounded-b-lg">
         <div className="flex flex-col sm:flex-row justify-between items-center space-y-3 sm:space-y-0">
           {/* Contador de resultados */}
-        
+          <div className="text-sm text-gray-600">
+            {isFilterActive ? 'Filtros ativos - ' : 'Todos os '} 
+            {filteredStudents?.length || 0} estudantes
+          </div>
 
           {/* Botões de Ação */}
           <div className="flex items-center space-x-2">
@@ -358,7 +371,7 @@ const FilterBar = ({ filters, setFilters, onSaveFilter, onExportSheet, filterOpt
               Exportar CSV
             </button>
 
-           
+            {/* Botão Meus Filtros */}
             <div className="relative z-25">
               <button
                 onClick={() => setIsLoadMenuOpen(!isLoadMenuOpen)}
@@ -366,7 +379,11 @@ const FilterBar = ({ filters, setFilters, onSaveFilter, onExportSheet, filterOpt
               >
                 <FiFilter className="w-4 h-4 mr-2" />
                 Meus Filtros
-                <FiChevronDown className={`w-4 h-4 ml-2 transition-transform ${isLoadMenuOpen ? 'transform rotate-180' : ''}`} />
+                {isLoadingFilters ? (
+                  <FiLoader className="w-4 h-4 ml-2 animate-spin" />
+                ) : (
+                  <FiChevronDown className={`w-4 h-4 ml-2 transition-transform ${isLoadMenuOpen ? 'transform rotate-180' : ''}`} />
+                )}
               </button>
 
               {isLoadMenuOpen && (
@@ -375,22 +392,41 @@ const FilterBar = ({ filters, setFilters, onSaveFilter, onExportSheet, filterOpt
                   onMouseLeave={() => setIsLoadMenuOpen(false)}
                 >
                   <div className="py-1 max-h-60 overflow-y-auto">
-                    {MOCKED_SAVED_FILTERS.length > 0 ? (
-                      MOCKED_SAVED_FILTERS.map((filter) => (
-                        <button
+                    {savedFilters.length > 0 ? (
+                      savedFilters.map((filter) => (
+                        <div
                           key={filter.id}
-                          onClick={() => handleLoadFilter(filter.name)}
-                          className="w-full text-left block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100 last:border-b-0"
+                          className="group relative flex items-center justify-between px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100 last:border-b-0 cursor-pointer"
+                          onClick={() => handleLoadFilter(filter)}
                         >
-                          {filter.name}
-                        </button>
+                          <span className="flex-1 truncate">{filter.name}</span>
+                          <button
+                            onClick={(e) => handleDeleteFilter(e, filter)}
+                            className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-600 transition-opacity"
+                            title="Excluir filtro"
+                          >
+                            <FiTrash2 className="w-3 h-3" />
+                          </button>
+                          
+                          {/* Badge de uso */}
+                          <span className="ml-2 px-1.5 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full">
+                            {filter.usage_count || 0}
+                          </span>
+                        </div>
                       ))
                     ) : (
                       <div className="px-4 py-2 text-sm text-gray-500">
-                        Nenhum filtro salvo
+                        {isLoadingFilters ? 'Carregando...' : 'Nenhum filtro salvo'}
                       </div>
                     )}
                   </div>
+                  
+                  {/* Footer do menu */}
+                  {savedFilters.length > 0 && (
+                    <div className="px-3 py-2 text-xs text-gray-500 bg-gray-50 border-t border-gray-100">
+                      {savedFilters.length} filtro(s) salvo(s)
+                    </div>
+                  )}
                 </div>
               )}
             </div>
