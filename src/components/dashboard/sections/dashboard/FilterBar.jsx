@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { FiChevronDown, FiFilter, FiSave, FiDownload, FiX, FiSearch } from 'react-icons/fi';
+import { FiChevronDown, FiFilter, FiSave, FiDownload, FiX, FiSearch, FiTrash2, FiLoader } from 'react-icons/fi';
 
 // Componente reutilizável para o dropdown multi-select com search
 const MultiSelectDropdown = ({ title, options = [], selected = [], onChange, placeholder = "Selecionar..." }) => {
@@ -457,5 +457,6 @@ const FilterBar = ({
 };
 
 export default FilterBar;
+
 
 
