@@ -202,7 +202,8 @@ const FilterBar = ({
   isLoadingFilters = false, // 👈 NOVA PROP
   filterOptions = {}, 
   userData = {}, 
-  republicType = 'mista' 
+  republicType = 'mista',
+  filteredStudents = [] 
 }) => {
   const { cursos, universidades, unidades, chamadas } = filters;
   
@@ -456,3 +457,4 @@ const FilterBar = ({
 };
 
 export default FilterBar;
+
