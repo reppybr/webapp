@@ -348,10 +348,10 @@ const FilterBar = ({
       <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 rounded-b-lg">
         <div className="flex flex-col sm:flex-row justify-between items-center space-y-3 sm:space-y-0">
           {/* Contador de resultados */}
-          <div className="text-sm text-gray-600">
-            {isFilterActive ? 'Filtros ativos - ' : 'Todos os '} 
-            {filteredStudents?.length || 0} estudantes
-          </div>
+ <div className="text-sm text-gray-600">
+    {isFilterActive ? 'Filtros ativos - ' : 'Todos os '} 
+    {filteredStudents.length} estudantes  
+  </div>
 
           {/* Botões de Ação */}
           <div className="flex items-center space-x-2">
@@ -457,4 +457,5 @@ const FilterBar = ({
 };
 
 export default FilterBar;
+
 
