@@ -5,7 +5,7 @@ export const filterService = {
   // Salvar filtro
   async saveFilter(filterData) {
     try {
-      const response = await apiService.post('/api/filtros/salvar', filterData);
+      const response = await apiService.post('/filtros/salvar', filterData);
       return response;
     } catch (error) {
       console.error('🔴 Erro ao salvar filtro:', error);
@@ -16,7 +16,7 @@ export const filterService = {
   // Listar filtros do usuário
   async getUserFilters() {
     try {
-      const response = await apiService.get('/api/filtros/listar');
+      const response = await apiService.get('/filtros/listar');
       return response.filtros || [];
     } catch (error) {
       console.error('🔴 Erro ao carregar filtros:', error);
@@ -27,7 +27,7 @@ export const filterService = {
   // Carregar filtro específico
   async loadFilter(filterId) {
     try {
-      const response = await apiService.get(`/api/filtros/carregar/${filterId}`);
+      const response = await apiService.get(`/filtros/carregar/${filterId}`);
       return response;
     } catch (error) {
       console.error('🔴 Erro ao carregar filtro:', error);
@@ -38,7 +38,7 @@ export const filterService = {
   // Excluir filtro
   async deleteFilter(filterId) {
     try {
-      const response = await apiService.delete(`/api/filtros/excluir/${filterId}`);
+      const response = await apiService.delete(`/filtros/excluir/${filterId}`);
       return response;
     } catch (error) {
       console.error('🔴 Erro ao excluir filtro:', error);
@@ -49,7 +49,7 @@ export const filterService = {
   // Editar filtro
   async updateFilter(filterId, updates) {
     try {
-      const response = await apiService.put(`/api/filtros/editar/${filterId}`, updates);
+      const response = await apiService.put(`/filtros/editar/${filterId}`, updates);
       return response;
     } catch (error) {
       console.error('🔴 Erro ao editar filtro:', error);
@@ -60,7 +60,7 @@ export const filterService = {
   // Carregar filtro compartilhado
   async loadSharedFilter(shareToken) {
     try {
-      const response = await apiService.get(`/api/filtros/compartilhados/${shareToken}`);
+      const response = await apiService.get(`/filtros/compartilhados/${shareToken}`);
       return response;
     } catch (error) {
       console.error('🔴 Erro ao carregar filtro compartilhado:', error);
@@ -68,3 +68,4 @@ export const filterService = {
     }
   }
 };
+
