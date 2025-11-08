@@ -5,7 +5,10 @@ import StudentTable from './dashboard/StudentTable';
 import FilterBar from './dashboard/FilterBar';
 import SaveFilterModal from './dashboard/SaveFilterModal';
 import { calouroService } from '../../../services/calouroService';
+import { filterService } from '../../../services/filterService';
+import { apiService } from '../../../services/apiService';
 import * as XLSX from 'xlsx';
+
 const normalizeString = (str) => {
   if (!str) return '';
   return str
@@ -31,7 +34,9 @@ const DashboardSection = ({ userData }) => {
     });
   
     const [isModalOpen, setIsModalOpen] = useState(false);
-  
+    const [savedFilters, setSavedFilters] = useState([]);
+    const [isLoadingFilters, setIsLoadingFilters] = useState(false);
+
     // Estado para gerenciar favoritos e status dos estudantes
     const [studentsMetadata, setStudentsMetadata] = useState({});
     
@@ -40,6 +45,40 @@ const DashboardSection = ({ userData }) => {
     
     // Estado para indicador de atualização
     const [isRefreshing, setIsRefreshing] = useState(false);
+
+    // Função para carregar filtros salvos
+    const loadSavedFilters = useCallback(async () => {
+      try {
+        setIsLoadingFilters(true);
+        console.log('🟡 Carregando filtros salvos...');
+        const userFilters = await filterService.getUserFilters();
+        console.log(`✅ ${userFilters.length} filtros carregados`);
+        setSavedFilters(userFilters);
+      } catch (error) {
+        console.error('🔴 Erro ao carregar filtros:', error);
+      } finally {
+        setIsLoadingFilters(false);
+      }
+    }, []);
+
+    // Carregar filtros quando o componente montar
+    useEffect(() => {
+      loadSavedFilters();
+    }, [loadSavedFilters]);
+
+    // Teste de conexão com o backend
+    useEffect(() => {
+      const testBackendConnection = async () => {
+        try {
+          const response = await apiService.get('/api/filtros/health');
+          console.log('✅ Backend de filtros está funcionando:', response);
+        } catch (error) {
+          console.error('🔴 Backend de filtros não está respondendo:', error);
+        }
+      };
+      
+      testBackendConnection();
+    }, []);
   
     // Função para recarregar os dados
     const refreshCalourosData = useCallback(async () => {
@@ -57,8 +96,6 @@ const DashboardSection = ({ userData }) => {
     const createStudentKey = useCallback((name, course, university, campus) => {
       return `${normalizeString(name)}-${normalizeString(course)}-${normalizeString(university)}-${normalizeString(campus)}`;
     }, []);
-  
- 
   
     // Carregar favoritos e status quando os dados da cidade forem carregados
     useEffect(() => {
@@ -100,7 +137,6 @@ const DashboardSection = ({ userData }) => {
               calouro.campus
             );
             
-            
             metadata[studentKey] = {
               isFavorited: calouro.favourite || false,
               status: statusDisplayMap[calouro.status] || 'Nenhum',
@@ -132,17 +168,13 @@ const DashboardSection = ({ userData }) => {
         console.log(`📝 Convertendo ${data.length} estudantes da API...`);
       
         const convertedStudents = data.map((student, index) => {
-          // 🔥 CORREÇÃO DEFINITIVA: Mapeamento correto do gênero
           const genderMap = {
             'M': 'male',
             'F': 'female'
-            // Removidos os mapeamentos desnecessários para português
           };
           
-          // A API retorna 'M' ou 'F', mapear diretamente
           const genderBackend = genderMap[student.genero] || 'other';
       
-       
           // Criar chave única NORMALIZADA para buscar metadados
           const studentKey = createStudentKey(
             student.nome,
@@ -160,7 +192,7 @@ const DashboardSection = ({ userData }) => {
             curso: student.curso_limpo || student.curso,
             universidade: student.universidade,
             unidade: student.unidade,
-            genero: student.genero === 'M' ? 'Masculino' : 'Feminino', // Para exibição
+            genero: student.genero === 'M' ? 'Masculino' : 'Feminino',
             cidade: student.cidade,
             remanejado: student.remanejado,
             // Metadados
@@ -172,7 +204,7 @@ const DashboardSection = ({ userData }) => {
               course: student.curso_limpo || student.curso,
               university: student.universidade,
               campus: student.unidade,
-              gender: genderBackend, // 🔥 AGORA CORRETO
+              gender: genderBackend,
               entrance_year: new Date().getFullYear()
             }
           };
@@ -263,253 +295,273 @@ const DashboardSection = ({ userData }) => {
   }, [filters, itemsPerPage]);
 
   // Handlers para favoritos e status
-
   const handleToggleFavorite = async (studentId, isFavorited) => {
-        const student = filteredStudents.find(s => s.id === studentId);
-        if (!student) return;
-    
-        const studentKey = createStudentKey(
-          student.nome,
-          student.curso,
-          student.universidade,
-          student.unidade
-        );
-    
-        // 1. ATUALIZAÇÃO OTIMISTA
-        // Salva o estado anterior para rollback
-        const previousMetadata = { ...studentsMetadata };
-        
-        // Atualiza a UI imediatamente
-        setStudentsMetadata(prev => ({
-          ...prev,
-          [studentKey]: {
-            ...prev[studentKey],
-            isFavorited: isFavorited
-            // Se for a primeira interação, o dbId ainda não existe,
-            // será atualizado se a criação for bem-sucedida
-          }
-        }));
-    
-        // 2. AÇÃO ASSÍNCRONA
-        try {
-          console.log(`🟡 Ação de favorito iniciada: ${student.nome} -> ${isFavorited}`);
-    
-          // A mágica está aqui: não precisamos mais do findCalouroInDatabase.
-          // Se o ID NÃO começa com "temp-", ele já existe no banco.
-          const studentExistsInDb = !String(studentId).startsWith('temp-');
-          let actualStudentId = studentId;
-    
-          if (studentExistsInDb) {
-            // JÁ EXISTE: Apenas atualiza
-            console.log(`✅ Estudante existe no banco. ID: ${actualStudentId}. Atualizando...`);
-            await calouroService.updateFavorite(actualStudentId, isFavorited);
-          
-          } else {
-            // NÃO EXISTE:
-            if (isFavorited) {
-              // Criar apenas se for favoritar
-              console.log(`🟡 Criando calouro no banco para favoritar: ${student.nome}`);
-              const createResponse = await calouroService.createCalouro({
-                ...student.originalData,
-                favourite: true,
-                status: 'pending' // Status default ao criar
-              });
-              actualStudentId = createResponse.calouro_id;
-    
-              // Atualiza o estado com o ID real do banco
-              // (Isso é importante para as próximas ações)
-              setStudentsMetadata(prev => ({
-                ...prev,
-                [studentKey]: {
-                  ...prev[studentKey],
-                  dbId: actualStudentId, // Atualiza o ID
-                  isFavorited: true
-                }
-              }));
-            } else {
-              // Ignorando "desfavoritar" de quem não existe
-              console.log(`🟡 Ignorando: tentativa de desfavoritar estudante que não existe no banco`);
-            }
-          }
-          console.log(`✅ Ação de favorito concluída: ${student.nome}`);
-    
-        } catch (err) {
-          // 3. ROLLBACK EM CASO DE ERRO
-          console.error('🔴 Erro ao atualizar favorito, revertendo UI:', err);
-          alert(`Erro ao atualizar favorito para ${student.nome}. Tente novamente.`);
-          
-          // Reverte o estado inteiro para a versão salva
-          setStudentsMetadata(previousMetadata);
-        }
-      };
-    
-      const handleStatusChange = async (studentId, newStatus) => {
-        const student = filteredStudents.find(s => s.id === studentId);
-        if (!student) return;
-    
-        const studentKey = createStudentKey(
-          student.nome,
-          student.curso,
-          student.universidade,
-          student.unidade
-        );
-    
-        // 1. ATUALIZAÇÃO OTIMISTA
-        // Salva o estado anterior para rollback
-        const previousMetadata = { ...studentsMetadata };
-    
-        // Atualiza a UI imediatamente
-        setStudentsMetadata(prev => ({
-          ...prev,
-          [studentKey]: {
-            ...prev[studentKey],
-            status: newStatus
-          }
-        }));
-    
-        // 2. AÇÃO ASSÍNCRONA
-        try {
-          console.log(`🟡 Ação de status iniciada: ${student.nome} -> ${newStatus}`);
-    
-          // Mapear status do frontend para backend
-          const statusMapping = {
-            'Nenhum': 'pending',
-            'Chamado': 'contacted',
-            'Sucesso': 'approved',
-            'Rejeitado': 'rejected'
-          };
-          const statusBackend = statusMapping[newStatus] || 'pending';
-    
-          // Verifica se o estudante existe no DB pelo ID
-          const studentExistsInDb = !String(studentId).startsWith('temp-');
-          let actualStudentId = studentId;
-    
-          if (studentExistsInDb) {
-            // JÁ EXISTE: Apenas atualiza
-            console.log(`✅ Estudante existe no banco. ID: ${actualStudentId}. Atualizando status...`);
-            await calouroService.updateStatus(actualStudentId, { status: statusBackend });
-          
-          } else {
-            // NÃO EXISTE:
-           if (newStatus !== 'Nenhum') {
-              // Criar apenas se o status for algo diferente de "Nenhum"
-              console.log(`🟡 Criando calouro no banco com status: ${student.nome} -> ${statusBackend}`);
-              const createResponse = await calouroService.createCalouro({
-                ...student.originalData,
-                favourite: student.isFavorited || false, // Respeita se já foi favoritado
-                status: statusBackend
-              });
-              actualStudentId = createResponse.calouro_id;
-    
-              // Atualiza o estado com o ID real do banco
-              setStudentsMetadata(prev => ({
-                ...prev,
-                [studentKey]: {
-                  ...prev[studentKey],
-                  dbId: actualStudentId, // Atualiza o ID
-                  status: newStatus
-                }
-              }));
-            } else {
-              // Ignorando "status: Nenhum" de quem não existe
-              console.log(`🟡 Ignorando: tentativa de definir status "Nenhum" para estudante que não existe no banco`);
-            }
-          }
-          console.log(`✅ Ação de status concluída: ${student.nome}`);
-    
-        } catch (err) {
-          // 3. ROLLBACK EM CASO DE ERRO
-          console.error('🔴 Erro ao atualizar status, revertendo UI:', err);
-          alert(`Erro ao atualizar status para ${student.nome}. Tente novamente.`);
-          
-          // Reverte o estado inteiro
-          setStudentsMetadata(previousMetadata);
-        }
-      };
+    const student = filteredStudents.find(s => s.id === studentId);
+    if (!student) return;
 
-    const handleExportSheet = () => {
-          if (!filteredStudents.length) return;
-          
-          // 1. Mapeia os dados (limpos e prontos para o Excel)
-          const dataToExport = filteredStudents.map(student => ({
-            Nome: student.nome,
-            Chamada: student.chamada,
-            Curso: student.curso,
-            Universidade: student.universidade,
-            Unidade: student.unidade,
-            Gênero: student.genero,
-            Cidade: userCity || 'N/A',
-            Favorito: student.isFavorited ? 'Sim' : 'Não',
-            Status: student.status
-          }));
+    const studentKey = createStudentKey(
+      student.nome,
+      student.curso,
+      student.universidade,
+      student.unidade
+    );
+
+    // 1. ATUALIZAÇÃO OTIMISTA
+    const previousMetadata = { ...studentsMetadata };
+    
+    setStudentsMetadata(prev => ({
+      ...prev,
+      [studentKey]: {
+        ...prev[studentKey],
+        isFavorited: isFavorited
+      }
+    }));
+
+    // 2. AÇÃO ASSÍNCRONA
+    try {
+      console.log(`🟡 Ação de favorito iniciada: ${student.nome} -> ${isFavorited}`);
+
+      const studentExistsInDb = !String(studentId).startsWith('temp-');
+      let actualStudentId = studentId;
+
+      if (studentExistsInDb) {
+        console.log(`✅ Estudante existe no banco. ID: ${actualStudentId}. Atualizando...`);
+        await calouroService.updateFavorite(actualStudentId, isFavorited);
       
-          // 2. Cria a planilha (worksheet) a partir do JSON
-          const ws = XLSX.utils.json_to_sheet(dataToExport);
+      } else {
+        if (isFavorited) {
+          console.log(`🟡 Criando calouro no banco para favoritar: ${student.nome}`);
+          const createResponse = await calouroService.createCalouro({
+            ...student.originalData,
+            favourite: true,
+            status: 'pending'
+          });
+          actualStudentId = createResponse.calouro_id;
+
+          setStudentsMetadata(prev => ({
+            ...prev,
+            [studentKey]: {
+              ...prev[studentKey],
+              dbId: actualStudentId,
+              isFavorited: true
+            }
+          }));
+        } else {
+          console.log(`🟡 Ignorando: tentativa de desfavoritar estudante que não existe no banco`);
+        }
+      }
+      console.log(`✅ Ação de favorito concluída: ${student.nome}`);
+
+    } catch (err) {
+      console.error('🔴 Erro ao atualizar favorito, revertendo UI:', err);
+      alert(`Erro ao atualizar favorito para ${student.nome}. Tente novamente.`);
       
-          // 3. 🔥 UX WIN: Define larguras de coluna personalizadas (em caracteres)
-          // Isso evita que o usuário tenha que redimensionar tudo
-          const columnWidths = [
-            { wch: 35 }, // Nome
-            { wch: 10 }, // Chamada
-            { wch: 45 }, // Curso (geralmente longo)
-            { wch: 30 }, // Universidade
-            { wch: 30 }, // Unidade
-            { wch: 12 }, // Gênero
-            { wch: 20 }, // Cidade
-            { wch: 10 }, // Favorito
-            { wch: 12 }  // Status
-          ];
-          ws['!cols'] = columnWidths;
+      setStudentsMetadata(previousMetadata);
+    }
+  };
+
+  const handleStatusChange = async (studentId, newStatus) => {
+    const student = filteredStudents.find(s => s.id === studentId);
+    if (!student) return;
+
+    const studentKey = createStudentKey(
+      student.nome,
+      student.curso,
+      student.universidade,
+      student.unidade
+    );
+
+    // 1. ATUALIZAÇÃO OTIMISTA
+    const previousMetadata = { ...studentsMetadata };
+
+    setStudentsMetadata(prev => ({
+      ...prev,
+      [studentKey]: {
+        ...prev[studentKey],
+        status: newStatus
+      }
+    }));
+
+    // 2. AÇÃO ASSÍNCRONA
+    try {
+      console.log(`🟡 Ação de status iniciada: ${student.nome} -> ${newStatus}`);
+
+      const statusMapping = {
+        'Nenhum': 'pending',
+        'Chamado': 'contacted',
+        'Sucesso': 'approved',
+        'Rejeitado': 'rejected'
+      };
+      const statusBackend = statusMapping[newStatus] || 'pending';
+
+      const studentExistsInDb = !String(studentId).startsWith('temp-');
+      let actualStudentId = studentId;
+
+      if (studentExistsInDb) {
+        console.log(`✅ Estudante existe no banco. ID: ${actualStudentId}. Atualizando status...`);
+        await calouroService.updateStatus(actualStudentId, { status: statusBackend });
       
-          // 4. 🔥 UX WIN: Estiliza o cabeçalho (Negrito + Fundo Cinza)
-          const headerStyle = {
-            font: { bold: true, sz: 12 },
-            fill: { fgColor: { rgb: "FFF0F0F0" } } // Cinza bem claro
-          };
-          // Pega as referências das células do cabeçalho (A1, B1, C1...)
-          const headerCells = ['A1', 'B1', 'C1', 'D1', 'E1', 'F1', 'G1', 'H1', 'I1'];
-          headerCells.forEach(cellRef => {
-            if (ws[cellRef]) {
-              ws[cellRef].s = headerStyle;
-            }
-          });
-          
-          // 5. 🔥 UX WIN: Adiciona AutoFiltro na tabela inteira
-          // Pega o range completo da tabela (Ex: 'A1:I501')
-          const dataRange = ws['!ref'];
-          ws['!autofilter'] = { ref: dataRange };
-          
-          // 6. 🔥 UX WIN: Congela a primeira linha (Painéis Congelados)
-          // O usuário pode rolar e os cabeçalhos ficam visíveis
-          ws['!views'] = [{ state: 'frozen', ySplit: 1 }];
+      } else {
+        if (newStatus !== 'Nenhum') {
+          console.log(`🟡 Criando calouro no banco com status: ${student.nome} -> ${statusBackend}`);
+          const createResponse = await calouroService.createCalouro({
+            ...student.originalData,
+            favourite: student.isFavorited || false,
+            status: statusBackend
+          });
+          actualStudentId = createResponse.calouro_id;
+
+          setStudentsMetadata(prev => ({
+            ...prev,
+            [studentKey]: {
+              ...prev[studentKey],
+              dbId: actualStudentId,
+              status: newStatus
+            }
+          }));
+        } else {
+          console.log(`🟡 Ignorando: tentativa de definir status "Nenhum" para estudante que não existe no banco`);
+        }
+      }
+      console.log(`✅ Ação de status concluída: ${student.nome}`);
+
+    } catch (err) {
+      console.error('🔴 Erro ao atualizar status, revertendo UI:', err);
+      alert(`Erro ao atualizar status para ${student.nome}. Tente novamente.`);
       
-          // 7. Cria o "livro" (workbook) e adiciona a planilha
-          const wb = XLSX.utils.book_new();
-          XLSX.utils.book_append_sheet(wb, ws, 'Calouros'); // 'Calouros' é o nome da aba
+      setStudentsMetadata(previousMetadata);
+    }
+  };
+
+  const handleExportSheet = () => {
+    if (!filteredStudents.length) return;
+    
+    const dataToExport = filteredStudents.map(student => ({
+      Nome: student.nome,
+      Chamada: student.chamada,
+      Curso: student.curso,
+      Universidade: student.universidade,
+      Unidade: student.unidade,
+      Gênero: student.genero,
+      Cidade: userCity || 'N/A',
+      Favorito: student.isFavorited ? 'Sim' : 'Não',
+      Status: student.status
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
+
+    const columnWidths = [
+      { wch: 35 },
+      { wch: 10 },
+      { wch: 45 },
+      { wch: 30 },
+      { wch: 30 },
+      { wch: 12 },
+      { wch: 20 },
+      { wch: 10 },
+      { wch: 12 }
+    ];
+    ws['!cols'] = columnWidths;
+
+    const headerStyle = {
+      font: { bold: true, sz: 12 },
+      fill: { fgColor: { rgb: "FFF0F0F0" } }
+    };
+    
+    const headerCells = ['A1', 'B1', 'C1', 'D1', 'E1', 'F1', 'G1', 'H1', 'I1'];
+    headerCells.forEach(cellRef => {
+      if (ws[cellRef]) {
+        ws[cellRef].s = headerStyle;
+      }
+    });
+    
+    const dataRange = ws['!ref'];
+    ws['!autofilter'] = { ref: dataRange };
+    
+    ws['!views'] = [{ state: 'frozen', ySplit: 1 }];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Calouros');
+
+    const fileName = `calouros-${userCity}-${new Date().toISOString().split('T')[0]}.xlsx`;
+    
+    XLSX.writeFile(wb, fileName);
+  };
+
+  // Função para salvar filtro
+  const handleSaveFilter = async (filterName) => {
+    try {
+      console.log('💾 Salvando filtro:', filterName);
       
-          // 8. Define o nome do arquivo
-          const fileName = `calouros-${userCity}-${new Date().toISOString().split('T')[0]}.xlsx`;
-          
-          // 9. Gera e baixa o arquivo .xlsx
-          XLSX.writeFile(wb, fileName);
-        };
+      const filterData = {
+        name: filterName,
+        filter_type: 'calouros',
+        filters: filters,
+        is_shared: false
+      };
+
+      const response = await filterService.saveFilter(filterData);
+      console.log('✅ Filtro salvo com sucesso:', response);
+      
+      await loadSavedFilters();
+      
+      alert('Filtro salvo com sucesso!');
+      handleCloseModal();
+    } catch (error) {
+      console.error('🔴 Erro ao salvar filtro:', error);
+      alert('Erro ao salvar filtro: ' + error.message);
+    }
+  };
+
+  // Função para carregar um filtro salvo
+  const handleLoadFilter = async (filterId) => {
+    try {
+      console.log('🟡 Carregando filtro:', filterId);
+      const filter = await filterService.loadFilter(filterId);
+      
+      if (filter && filter.filters) {
+        setFilters(filter.filters);
+        console.log('✅ Filtro aplicado com sucesso:', filter.name);
+      }
+    } catch (error) {
+      console.error('🔴 Erro ao carregar filtro:', error);
+      alert('Erro ao carregar filtro: ' + error.message);
+    }
+  };
+
+  // Função para excluir um filtro
+  const handleDeleteFilter = async (filterId, filterName) => {
+    if (confirm(`Tem certeza que deseja excluir o filtro "${filterName}"?`)) {
+      try {
+        await filterService.deleteFilter(filterId);
+        console.log('✅ Filtro excluído com sucesso');
+        
+        await loadSavedFilters();
+        
+        alert('Filtro excluído com sucesso!');
+      } catch (error) {
+        console.error('🔴 Erro ao excluir filtro:', error);
+        alert('Erro ao excluir filtro: ' + error.message);
+      }
+    }
+  };
 
   const handleOpenSaveModal = () => {
+    const isFilterActive = filters.cursos.length > 0 || 
+                          filters.universidades.length > 0 || 
+                          filters.unidades.length > 0 || 
+                          filters.chamadas.length > 0;
+    
+    if (!isFilterActive) {
+      alert('Aplique alguns filtros antes de salvar!');
+      return;
+    }
+    
     setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
-  };
-
-  const handleSaveFilter = (filterName) => {
-    console.log('Salvando filtro:', {
-      name: filterName,
-      settings: filters,
-      city: userCity,
-      republicType: republicType
-    });
-    handleCloseModal();
   };
 
   // Estados de loading e error
@@ -578,9 +630,14 @@ const DashboardSection = ({ userData }) => {
           setFilters={setFilters}
           onSaveFilter={handleOpenSaveModal}
           onExportSheet={handleExportSheet}
+          onLoadFilter={handleLoadFilter}
+          onDeleteFilter={handleDeleteFilter}
+          savedFilters={savedFilters}
+          isLoadingFilters={isLoadingFilters}
           filterOptions={filterOptions}
           userData={userData}
           republicType={republicType}
+          filteredStudents={filteredStudents}
         />
         
         <StudentTable 
@@ -611,7 +668,4 @@ const DashboardSection = ({ userData }) => {
   );
 };
 
-
 export default DashboardSection;
-
-
