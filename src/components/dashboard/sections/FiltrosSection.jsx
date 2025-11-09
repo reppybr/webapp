@@ -9,45 +9,13 @@ import {
   FiX,
   FiAlertTriangle,
   FiStar,
-  FiLock
+  FiLock,
+  FiRefreshCw
 } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
-
-// --- DADOS MOCADOS ---
-const MOCKED_FILTERS = [
-  { 
-    id: 1, 
-    name: 'Engenharias - Campinas (1ª Chamada)', 
-    criteria: { 
-      gender: 'Todos', 
-      cursos: ['Engenharia de Software', 'Engenharia Elétrica'], 
-      campi: ['Campinas'], 
-      chamadas: [1] 
-    } 
-  },
-  { 
-    id: 2, 
-    name: 'Saúde (Feminino)', 
-    criteria: { 
-      gender: 'Feminino', 
-      cursos: ['Medicina', 'Enfermagem'], 
-      campi: [], 
-      chamadas: [] 
-    } 
-  },
-  { 
-    id: 3, 
-    name: 'Veteranos Limeira', 
-    criteria: { 
-      gender: 'Todos', 
-      cursos: [], 
-      campi: ['Limeira'], 
-      chamadas: [2, 3] 
-    } 
-  },
-];
-// ---------------------
+import { filterService } from '../../../services/filterService';
+import { toast } from 'react-toastify';
 
 /**
  * Componente de Bloqueio para Planos Free
@@ -58,17 +26,14 @@ const FreePlanBlock = () => {
   return (
     <div className="bg-white rounded-lg shadow-md border border-gray-200 p-8 text-center">
       <div className="max-w-md mx-auto">
-        {/* Ícone de bloqueio */}
         <div className="mx-auto w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mb-4">
           <FiLock className="w-8 h-8 text-yellow-600" />
         </div>
         
-        {/* Título */}
         <h2 className="text-2xl font-bold text-gray-900 mb-3">
           Funcionalidade Premium
         </h2>
         
-        {/* Descrição */}
         <p className="text-gray-600 mb-6">
           Os <strong>Filtros Salvos</strong> estão disponíveis apenas para planos 
           <span className="text-green-600 font-semibold"> Veterano</span> e <span className="text-purple-600 font-semibold"> Veterano Mor</span>.
@@ -76,7 +41,6 @@ const FreePlanBlock = () => {
           Faça upgrade para salvar e gerenciar seus filtros personalizados.
         </p>
         
-        {/* Recursos dos planos pagos */}
         <div className="bg-gray-50 rounded-lg p-4 mb-6">
           <h3 className="font-semibold text-gray-900 mb-3">O que você ganha com os planos pagos:</h3>
           <ul className="text-sm text-gray-600 space-y-2 text-left">
@@ -99,15 +63,12 @@ const FreePlanBlock = () => {
           </ul>
         </div>
         
-        {/* Botão de ação */}
         <button
           onClick={() => navigate('/planos')}
           className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 transform hover:scale-105 shadow-lg"
         >
           Ver Planos e Fazer Upgrade
         </button>
-        
-     
       </div>
     </div>
   );
@@ -119,17 +80,38 @@ const FreePlanBlock = () => {
 const FilterCard = ({ filter, onLoad, onEdit, onDelete }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  // Função para formatar os critérios do filtro
   const formatCriteria = (criteria) => {
+    if (!criteria) return ['Sem critérios específicos'];
+    
     const tags = [];
-    if (criteria.gender !== 'Todos') tags.push(`Gênero: ${criteria.gender}`);
-    if (criteria.cursos.length > 0) tags.push(`Cursos (${criteria.cursos.length})`);
-    if (criteria.campi.length > 0) tags.push(`Campus (${criteria.campi.length})`);
-    if (criteria.chamadas.length > 0) tags.push(`Chamadas (${criteria.chamadas.length})`);
+    
+    // Critérios do filtro real da API
+    if (criteria.gender && criteria.gender !== 'Todos') {
+      tags.push(`Gênero: ${criteria.gender}`);
+    }
+    
+    if (criteria.cursos && criteria.cursos.length > 0) {
+      tags.push(`Cursos (${criteria.cursos.length})`);
+    }
+    
+    if (criteria.universidades && criteria.universidades.length > 0) {
+      tags.push(`Universidades (${criteria.universidades.length})`);
+    }
+    
+    if (criteria.unidades && criteria.unidades.length > 0) {
+      tags.push(`Unidades (${criteria.unidades.length})`);
+    }
+    
+    if (criteria.chamadas && criteria.chamadas.length > 0) {
+      tags.push(`Chamadas (${criteria.chamadas.length})`);
+    }
+    
     if (tags.length === 0) return ['Sem critérios específicos'];
     return tags;
   };
 
-  const criteriaTags = formatCriteria(filter.criteria);
+  const criteriaTags = formatCriteria(filter.filters);
 
   return (
     <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden transition-all hover:shadow-lg">
@@ -139,9 +121,16 @@ const FilterCard = ({ filter, onLoad, onEdit, onDelete }) => {
             <div className="flex-shrink-0 bg-gray-900 text-white p-3 rounded-full">
               <FiFilter className="w-5 h-5" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 break-words">
-              {filter.name}
-            </h3>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 break-words">
+                {filter.name}
+              </h3>
+              {filter.filter_type && (
+                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                  {filter.filter_type}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Menu Kebab */}
@@ -188,9 +177,9 @@ const FilterCard = ({ filter, onLoad, onEdit, onDelete }) => {
             Critérios Ativos
           </h4>
           <div className="flex flex-wrap gap-2">
-            {criteriaTags.map(tag => (
+            {criteriaTags.map((tag, index) => (
               <span 
-                key={tag} 
+                key={index} 
                 className="px-2.5 py-0.5 bg-gray-100 text-gray-700 rounded-full text-sm font-medium"
               >
                 {tag}
@@ -198,6 +187,15 @@ const FilterCard = ({ filter, onLoad, onEdit, onDelete }) => {
             ))}
           </div>
         </div>
+
+        {/* Data de criação */}
+        {filter.created_at && (
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <p className="text-xs text-gray-500">
+              Criado em: {new Date(filter.created_at).toLocaleDateString('pt-BR')}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -206,7 +204,7 @@ const FilterCard = ({ filter, onLoad, onEdit, onDelete }) => {
 /**
  * 2. Componente de Estado Vazio (UX)
  */
-const EmptyState = () => {
+const EmptyState = ({ onRefresh }) => {
   return (
     <div className="flex flex-col items-center justify-center text-center p-12 bg-white rounded-lg shadow-sm border border-gray-200 border-dashed">
       <div className="bg-gray-100 p-4 rounded-full">
@@ -215,10 +213,17 @@ const EmptyState = () => {
       <h3 className="mt-4 text-xl font-semibold text-gray-900">
         Nenhum filtro salvo
       </h3>
-      <p className="mt-1 text-gray-600">
+      <p className="mt-1 text-gray-600 mb-4">
         Você ainda não salvou nenhum filtro. Tente salvar uma
         combinação na tela 'Painel' para que ela apareça aqui.
       </p>
+      <button
+        onClick={onRefresh}
+        className="flex items-center text-gray-600 hover:text-gray-900"
+      >
+        <FiRefreshCw className="w-4 h-4 mr-2" />
+        Recarregar
+      </button>
     </div>
   );
 };
@@ -238,6 +243,10 @@ const EditFilterModal = ({ isOpen, onClose, onConfirm, filter }) => {
   if (!isOpen || !filter) return null;
 
   const handleSave = () => {
+    if (!name.trim()) {
+      toast.error('Digite um nome para o filtro');
+      return;
+    }
     onConfirm(filter.id, name);
   };
 
@@ -261,6 +270,7 @@ const EditFilterModal = ({ isOpen, onClose, onConfirm, filter }) => {
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+            placeholder="Digite o nome do filtro"
           />
         </div>
         
@@ -326,23 +336,66 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, filter }) => {
  * 5. Componente Principal da Seção
  */
 const FiltrosSection = ({ userData }) => {
-  const [filters, setFilters] = useState(MOCKED_FILTERS);
+  const [filters, setFilters] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [modalState, setModalState] = useState({ type: null, filter: null });
   const navigate = useNavigate();
   const { isFree, isBasic, isPremium } = useAuth();
 
-  // 🔥 VERIFICAR SE O USUÁRIO É FREE
+  // Verificar se o usuário é free
   const userIsFree = isFree();
   const userPlan = userData?.planType || 'free';
 
   console.log(`🔍 [FiltrosSection] Plano do usuário: ${userPlan}, É free: ${userIsFree}`);
 
+  // Carregar filtros do usuário
+  const loadFilters = async () => {
+    if (userIsFree) {
+      setLoading(false);
+      return;
+    }
 
+    try {
+      setLoading(true);
+      console.log('🟡 Carregando filtros do usuário...');
+      const userFilters = await filterService.getUserFilters();
+      console.log(`✅ ${userFilters.length} filtros carregados da API`);
+      setFilters(userFilters);
+    } catch (error) {
+      console.error('🔴 Erro ao carregar filtros:', error);
+      toast.error('Erro ao carregar filtros salvos');
+      setFilters([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Handlers para Ações (apenas para planos pagos)
-  const handleLoad = (filter) => {
-    console.log("Carregar filtro:", filter.name);
-    navigate('/dashboard');
+  // Carregar filtros quando o componente montar
+  useEffect(() => {
+    loadFilters();
+  }, [userIsFree]);
+
+  // Handlers para Ações
+  const handleLoad = async (filter) => {
+    try {
+      console.log("🟡 Carregando filtro:", filter.name);
+      
+      // Carregar os critérios completos do filtro
+      const filterData = await filterService.loadFilter(filter.id);
+      
+      // Navegar para o dashboard com os filtros aplicados
+      navigate('/dashboard', { 
+        state: { 
+          loadedFilter: filterData,
+          filterName: filter.name 
+        }
+      });
+      
+      toast.success(`Filtro "${filter.name}" carregado!`);
+    } catch (error) {
+      console.error('🔴 Erro ao carregar filtro:', error);
+      toast.error('Erro ao carregar filtro');
+    }
   };
   
   const handleEdit = (filter) => {
@@ -359,24 +412,78 @@ const FiltrosSection = ({ userData }) => {
     setModalState({ type: null, filter: null });
   };
 
-  const handleConfirmEdit = (filterId, newName) => {
-    console.log("Salvando:", filterId, "com novo nome:", newName);
-    setFilters(prevFilters =>
-      prevFilters.map(f => (f.id === filterId ? { ...f, name: newName } : f))
-    );
-    handleCloseModal();
+  const handleConfirmEdit = async (filterId, newName) => {
+    try {
+      console.log("🟡 Editando filtro:", filterId, "com novo nome:", newName);
+      
+      await filterService.updateFilter(filterId, { name: newName });
+      
+      // Atualizar a lista local
+      setFilters(prevFilters =>
+        prevFilters.map(f => (f.id === filterId ? { ...f, name: newName } : f))
+      );
+      
+      toast.success('Filtro atualizado com sucesso!');
+      handleCloseModal();
+    } catch (error) {
+      console.error('🔴 Erro ao editar filtro:', error);
+      toast.error('Erro ao editar filtro');
+    }
   };
   
-  const handleConfirmDelete = (filterId) => {
-    console.log("Excluindo:", filterId);
-    setFilters(prevFilters => prevFilters.filter(f => f.id !== filterId));
-    handleCloseModal();
+  const handleConfirmDelete = async (filterId) => {
+    try {
+      console.log("🟡 Excluindo filtro:", filterId);
+      
+      await filterService.deleteFilter(filterId);
+      
+      // Atualizar a lista local
+      setFilters(prevFilters => prevFilters.filter(f => f.id !== filterId));
+      
+      toast.success('Filtro excluído com sucesso!');
+      handleCloseModal();
+    } catch (error) {
+      console.error('🔴 Erro ao excluir filtro:', error);
+      toast.error('Erro ao excluir filtro');
+    }
   };
+
+  // Se o usuário for free, mostrar bloqueio
+  if (userIsFree) {
+    return <FreePlanBlock />;
+  }
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow-md border border-gray-200 p-8">
+        <div className="flex items-center justify-center">
+          <FiRefreshCw className="w-6 h-6 text-gray-500 animate-spin mr-3" />
+          <span className="text-gray-600">Carregando filtros...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gray-50 min-h-full">
+      {/* Header com contador */}
+      <div className="mb-6 flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Filtros Salvos</h1>
+          <p className="text-gray-600">
+            {filters.length} {filters.length === 1 ? 'filtro salvo' : 'filtros salvos'}
+          </p>
+        </div>
+        <button
+          onClick={loadFilters}
+          className="flex items-center text-gray-600 hover:text-gray-900"
+        >
+          <FiRefreshCw className="w-4 h-4 mr-2" />
+          Recarregar
+        </button>
+      </div>
 
-      
       {/* Grid de Filtros ou Estado Vazio */}
       {filters.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -391,7 +498,7 @@ const FiltrosSection = ({ userData }) => {
           ))}
         </div>
       ) : (
-        <EmptyState />
+        <EmptyState onRefresh={loadFilters} />
       )}
 
       {/* Modais */}
