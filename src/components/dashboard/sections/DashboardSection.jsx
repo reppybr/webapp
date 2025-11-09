@@ -47,20 +47,21 @@ const DashboardSection = ({ userData }) => {
     const [isRefreshing, setIsRefreshing] = useState(false);
 
     // Função para carregar filtros salvos
-    const loadSavedFilters = useCallback(async () => {
-      try {
-        setIsLoadingFilters(true);
-        console.log('🟡 Carregando filtros salvos...');
-        const userFilters = await filterService.getUserFilters();
-        console.log(`✅ ${userFilters.length} filtros carregados`);
-        setSavedFilters(userFilters);
-      } catch (error) {
-        console.error('🔴 Erro ao carregar filtros:', error);
-        // Não mostrar alerta para evitar spam
-      } finally {
-        setIsLoadingFilters(false);
-      }
-    }, []);
+  const loadSavedFilters = useCallback(async () => {
+    try {
+      setIsLoadingFilters(true);
+      console.log('🟡 Carregando filtros salvos...');
+      const userFilters = await filterService.getUserFilters();
+      console.log(`✅ ${userFilters.length} filtros carregados`);
+      setSavedFilters(userFilters);
+    } catch (error) {
+      console.error('🔴 Erro ao carregar filtros:', error);
+      // Toast para erro silencioso
+      toast.error('Erro ao carregar filtros salvos');
+    } finally {
+      setIsLoadingFilters(false);
+    }
+  }, []);
 
     // Carregar filtros quando o componente montar
     useEffect(() => {
@@ -352,10 +353,12 @@ const DashboardSection = ({ userData }) => {
         }
       }
       console.log(`✅ Ação de favorito concluída: ${student.nome}`);
+       toast.success(`Estudante ${isFavorited ? 'favoritado' : 'desfavoritado'} com sucesso!`);
 
     } catch (err) {
-      console.error('🔴 Erro ao atualizar favorito, revertendo UI:', err);
-      alert(`Erro ao atualizar favorito para ${student.nome}. Tente novamente.`);
+       console.error('🔴 Erro ao atualizar favorito, revertendo UI:', err);
+      // Toast de erro
+      toast.error(`Erro ao ${isFavorited ? 'favoritar' : 'desfavoritar'} estudante`);
       
       setStudentsMetadata(previousMetadata);
     }
@@ -425,15 +428,17 @@ const DashboardSection = ({ userData }) => {
         }
       }
       console.log(`✅ Ação de status concluída: ${student.nome}`);
-
+      
+      // Toast de sucesso
+      toast.success(`Status atualizado para "${newStatus}"`);
     } catch (err) {
       console.error('🔴 Erro ao atualizar status, revertendo UI:', err);
-      alert(`Erro ao atualizar status para ${student.nome}. Tente novamente.`);
+      // Toast de erro
+      toast.error('Erro ao atualizar status do estudante');
       
       setStudentsMetadata(previousMetadata);
     }
   };
-
   const handleExportSheet = () => {
     if (!filteredStudents.length) return;
     
@@ -490,7 +495,7 @@ const DashboardSection = ({ userData }) => {
   };
 
   // 🔥 CORREÇÃO: Função para salvar filtro com tratamento melhorado
-  const handleSaveFilter = async (filterName) => {
+ const handleSaveFilter = async (filterName) => {
     try {
       console.log('💾 Salvando filtro:', filterName);
       
@@ -508,19 +513,18 @@ const DashboardSection = ({ userData }) => {
       // Recarregar a lista de filtros
       await loadSavedFilters();
       
-      alert('Filtro salvo com sucesso!');
+      // Toast de sucesso
+      toast.success('Filtro salvo com sucesso!');
       handleCloseModal();
     } catch (error) {
       console.error('🔴 Erro ao salvar filtro:', error);
-      // 🔥 CORREÇÃO: Mensagem mais amigável
+      // Toast de erro
       const errorMessage = error.message.includes('404') 
-        ? 'Serviço de filtros temporariamente indisponível. Tente novamente mais tarde.'
-        : `Erro ao salvar filtro: ${error.message}`;
-      alert(errorMessage);
+        ? 'Serviço de filtros temporariamente indisponível'
+        : 'Erro ao salvar filtro';
+      toast.error(errorMessage);
     }
   };
-
-  // 🔥 CORREÇÃO: Função para carregar filtro com fallback
   const handleLoadFilter = async (filterId) => {
     try {
       console.log('🟡 Carregando filtro:', filterId);
@@ -529,34 +533,41 @@ const DashboardSection = ({ userData }) => {
       if (filter && filter.filters) {
         setFilters(filter.filters);
         console.log('✅ Filtro aplicado com sucesso:', filter.name);
-        alert(`Filtro "${filter.name}" carregado com sucesso!`);
+        // Toast de sucesso
+        toast.success(`Filtro "${filter.name}" carregado!`);
       }
     } catch (error) {
       console.error('🔴 Erro ao carregar filtro:', error);
+      // Toast de erro
       const errorMessage = error.message.includes('404')
-        ? 'Filtro não encontrado ou serviço indisponível.'
-        : `Erro ao carregar filtro: ${error.message}`;
-      alert(errorMessage);
+        ? 'Filtro não encontrado'
+        : 'Erro ao carregar filtro';
+      toast.error(errorMessage);
     }
   };
 
-  // 🔥 CORREÇÃO: Função para excluir filtro com fallback
+  // 🔥 CORREÇÃO: Função para excluir filtro com toast
   const handleDeleteFilter = async (filterId, filterName) => {
-    if (confirm(`Tem certeza que deseja excluir o filtro "${filterName}"?`)) {
-      try {
-        await filterService.deleteFilter(filterId);
-        console.log('✅ Filtro excluído com sucesso');
-        
-        await loadSavedFilters();
-        
-        alert('Filtro excluído com sucesso!');
-      } catch (error) {
-        console.error('🔴 Erro ao excluir filtro:', error);
-        const errorMessage = error.message.includes('404')
-          ? 'Filtro não encontrado ou serviço indisponível.'
-          : `Erro ao excluir filtro: ${error.message}`;
-        alert(errorMessage);
-      }
+    // Usando um toast de confirmação personalizado
+    const confirmDelete = window.confirm(`Tem certeza que deseja excluir o filtro "${filterName}"?`);
+    
+    if (!confirmDelete) return;
+
+    try {
+      await filterService.deleteFilter(filterId);
+      console.log('✅ Filtro excluído com sucesso');
+      
+      await loadSavedFilters();
+      
+      // Toast de sucesso
+      toast.success('Filtro excluído com sucesso!');
+    } catch (error) {
+      console.error('🔴 Erro ao excluir filtro:', error);
+      // Toast de erro
+      const errorMessage = error.message.includes('404')
+        ? 'Filtro não encontrado'
+        : 'Erro ao excluir filtro';
+      toast.error(errorMessage);
     }
   };
 

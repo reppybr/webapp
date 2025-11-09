@@ -1,6 +1,8 @@
 // src/App.js
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Outlet, Navigate } from 'react-router-dom';
+import { ToastContainer } from 'react-toastify'; // Import do ToastContainer
+import 'react-toastify/dist/ReactToastify.css'; // Import do CSS
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Checkout from './pages/Checkout';
@@ -20,6 +22,7 @@ import CompleteRegistration from './pages/CompleteRegistration';
 import Test from './pages/Test';
 import Contact from './pages/Contact';
 import News from './pages/Novidades';
+
 /**
  * Componente de Layout (com Navbar e Footer)
  */
@@ -27,10 +30,6 @@ const MainLayout = () => {
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
-      {/* *** CORREÇÃO AQUI ***
-        Adicione 'pt-20' para empurrar o conteúdo para baixo
-        da navbar (que tem h-20)
-      */}
       <main className="flex-grow pt-20">
         <Outlet />
       </main>
@@ -58,6 +57,24 @@ function App() {
     <AuthProvider>
       <Router>
         <div className="font-sans antialiased">
+          {/* Container de Toasts - deve ficar no nível mais alto da aplicação */}
+          <ToastContainer
+            position="top-right"
+            autoClose={4000}
+            hideProgressBar={false}
+            newestOnTop={false}
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+            theme="light"
+            toastStyle={{
+              borderRadius: '8px',
+              fontSize: '14px',
+            }}
+          />
+          
           <Routes>
             {/* --- Rotas que USAM o layout principal --- */}
             <Route element={<MainLayout />}>
@@ -69,6 +86,7 @@ function App() {
               <Route path="/novidades" element={<News />} />
             </Route>
             <Route path="/checkout" element={<Checkout />} />
+            
             {/* --- Rotas de Autenticação (sem layout) --- */}
             <Route element={<AuthLayout />}>
               <Route path="/login" element={<Login />} />
