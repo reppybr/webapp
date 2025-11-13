@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from '../components/dashboard/layout/Sidebar';
 import Header from '../components/dashboard/layout/Header';
 import MainContent from '../components/dashboard/MainContent';
@@ -35,6 +35,22 @@ const Dashboard = () => {
   } = useAuth();
   
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // 🔥 DETECTAR NAVEGAÇÃO COM FILTRO E MUDAR SEÇÃO AUTOMATICAMENTE
+  useEffect(() => {
+    if (location.state?.loadedFilter) {
+      console.log('🟡 [Dashboard] Navegação com filtro detectada:', location.state.filterName);
+      
+      // Mudar automaticamente para a seção dashboard
+      setActiveSection('dashboard');
+      
+      // Limpar o state da navegação para não recarregar o mesmo filtro novamente
+      setTimeout(() => {
+        window.history.replaceState({}, document.title);
+      }, 100);
+    }
+  }, [location]);
 
   // 🔥 REDIRECIONA PARA PLANOS SE NÃO TIVER PLANO ATIVO
   useEffect(() => {
@@ -114,6 +130,8 @@ const Dashboard = () => {
           <MainContent 
             activeSection={activeSection} 
             userData={userData}
+            // 🔥 PASSA O STATE DA NAVEGAÇÃO PARA AS SEÇÕES
+            navigationState={location.state}
           />
         </main>
       </div>

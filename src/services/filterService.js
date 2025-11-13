@@ -24,13 +24,18 @@ export const filterService = {
     }
   },
 
-  // Carregar filtro específico
   async loadFilter(filterId) {
     try {
+      console.log('🟡 [filterService] Fazendo request para:', `/filtros/carregar/${filterId}`);
       const response = await apiService.get(`/filtros/carregar/${filterId}`);
+      console.log('🟡 [filterService] Resposta recebida:', response);
       return response;
     } catch (error) {
-      console.error('🔴 Erro ao carregar filtro:', error);
+      console.error('🔴 [filterService] Erro detalhado:', {
+        message: error.message,
+        stack: error.stack,
+        response: error.response // se existir
+      });
       throw new Error(error.message || 'Erro ao carregar filtro');
     }
   },

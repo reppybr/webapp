@@ -162,27 +162,22 @@ const loginWithSolana = async () => {
       const planType = getPlanType();
       let endpoint;
       
-      // 🔥 DEFINE QUAL ENDPOINT USAR BASEADO NO PLANO
+      // 🔥 USANDO A NOVA API
       if (planType === 'free') {
-        endpoint = `${API_URL}/api/v1/cidade/${city}/chamada1`;
+        endpoint = `/api/v1/calouros/chamada1?cidade=${encodeURIComponent(city)}&limit=1000`;
       } else {
-        endpoint = `${API_URL}/api/v1/cidade/${city}/completo`;
+        endpoint = `/api/v1/calouros/completo?cidade=${encodeURIComponent(city)}&limit=1000`;
       }
       
       console.log(`🟡 [API] Buscando dados para ${city} no endpoint: ${endpoint} (Plano: ${planType})`);
       
-      const response = await fetch(endpoint, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-      });
+      const response = await apiService.get(endpoint);
   
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (response.error) {
+        throw new Error(response.error);
       }
   
-      const data = await response.json();
-      return data;
+      return response;
     } catch (error) {
       console.error('Error fetching city data:', error);
       setError('Erro ao carregar dados da cidade');

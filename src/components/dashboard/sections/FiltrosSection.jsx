@@ -383,7 +383,8 @@ const FiltrosSection = ({ userData }) => {
       // Carregar os critérios completos do filtro
       const filterData = await filterService.loadFilter(filter.id);
       
-      // Navegar para o dashboard com os filtros aplicados
+      // 🔥 CORREÇÃO: Navegar para o dashboard com os filtros aplicados
+      // Usando state para passar o filtro carregado
       navigate('/dashboard', { 
         state: { 
           loadedFilter: filterData,
@@ -391,13 +392,12 @@ const FiltrosSection = ({ userData }) => {
         }
       });
       
-      toast.success(`Filtro "${filter.name}" carregado!`);
+      toast.success(`Filtro "${filter.name}" carregado! Redirecionando para o painel...`);
     } catch (error) {
       console.error('🔴 Erro ao carregar filtro:', error);
       toast.error('Erro ao carregar filtro');
     }
   };
-  
   const handleEdit = (filter) => {
     console.log("Abrir modal de edição para:", filter.name);
     setModalState({ type: 'edit', filter: filter });

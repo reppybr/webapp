@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { FiChevronDown, FiFilter, FiSave, FiDownload, FiX, FiSearch, FiTrash2, FiLoader } from 'react-icons/fi';
+import { FiChevronDown, FiFilter, FiSave, FiDownload, FiX, FiSearch, FiTrash2, FiLoader, FiRefreshCw } from 'react-icons/fi';
 
 // Componente reutilizável para o dropdown multi-select com search
 const MultiSelectDropdown = ({ title, options = [], selected = [], onChange, placeholder = "Selecionar..." }) => {
@@ -103,6 +103,7 @@ const MultiSelectDropdown = ({ title, options = [], selected = [], onChange, pla
                     onChange={() => handleSelect(option)}
                   />
                   <span className="ml-3 flex-1 truncate">
+                    {/* Mantém a lógica especial para "Chamada" */}
                     {typeof option === 'number' ? `${option}ª Chamada` : option}
                   </span>
                 </label>
@@ -128,7 +129,8 @@ const MultiSelectDropdown = ({ title, options = [], selected = [], onChange, pla
 
 // Componente para mostrar chips dos filtros ativos
 const ActiveFilters = ({ filters, onRemoveFilter, republicType }) => {
-  const { cursos, universidades, unidades, chamadas } = filters;
+  // ALTERADO: Adicionado 'status' na desestruturação
+  const { cursos, universidades, unidades, chamadas, status } = filters;
   
   const activeFilters = [];
   
@@ -154,6 +156,11 @@ const ActiveFilters = ({ filters, onRemoveFilter, republicType }) => {
   
   chamadas.forEach(chamada => {
     activeFilters.push({ type: 'chamada', label: `${chamada}ª Chamada`, value: chamada });
+  });
+
+  // NOVO: Adiciona chips para o filtro de status
+  status.forEach(stat => {
+    activeFilters.push({ type: 'status', label: `Status: ${stat}`, value: stat });
   });
 
   if (activeFilters.length === 0) return null;
@@ -196,32 +203,38 @@ const FilterBar = ({
   setFilters, 
   onSaveFilter, 
   onExportSheet, 
-  onLoadFilter, // 👈 NOVA PROP
-  onDeleteFilter, // 👈 NOVA PROP
-  savedFilters = [], // 👈 NOVA PROP
-  isLoadingFilters = false, // 👈 NOVA PROP
+  onLoadFilter,
+  onDeleteFilter,
+  onRefresh,
+  savedFilters = [],
+  isLoadingFilters = false,
   filterOptions = {}, 
   userData = {}, 
   republicType = 'mista',
-  filteredStudents = [] 
+  filteredStudents = [],
+  accessInfo = {}
 }) => {
-  const { cursos, universidades, unidades, chamadas } = filters;
+  // ALTERADO: Adicionado 'status' na desestruturação
+  const { cursos, universidades, unidades, chamadas, status } = filters;
   
   // Garantir que filterOptions sempre tenha valores padrão
+  // ALTERADO: Adicionado 'statusOptions'
   const { 
     cursos: cursosOptions = [], 
     universidades: universidadesOptions = [], 
     unidades: unidadesOptions = [], 
-    chamadas: chamadasOptions = [] 
+    chamadas: chamadasOptions = [],
+    status: statusOptions = [] // NOVO
   } = filterOptions;
 
   const [isLoadMenuOpen, setIsLoadMenuOpen] = useState(false);
 
-  // Verificar se há filtros ativos (sem gênero)
+  // ALTERADO: Adicionado 'status.length' na verificação
   const isFilterActive = cursos.length > 0 || 
                          universidades.length > 0 || 
                          unidades.length > 0 || 
-                         chamadas.length > 0;
+                         chamadas.length > 0 ||
+                         status.length > 0; // NOVO
 
   // Remover filtro individual
   const handleRemoveFilter = (type, value) => {
@@ -230,7 +243,8 @@ const FilterBar = ({
         cursos: [],
         universidades: [],
         unidades: [],
-        chamadas: []
+        chamadas: [],
+        status: [] // NOVO: Limpar status
       });
       return;
     }
@@ -248,6 +262,10 @@ const FilterBar = ({
       case 'chamada':
         setFilters(prev => ({ ...prev, chamadas: prev.chamadas.filter(c => c !== value) }));
         break;
+      // NOVO: Case para remover filtro de status
+      case 'status':
+        setFilters(prev => ({ ...prev, status: prev.status.filter(s => s !== value) }));
+        break;
       default:
         break;
     }
@@ -260,7 +278,7 @@ const FilterBar = ({
   };
 
   const handleDeleteFilter = (e, filter) => {
-    e.stopPropagation(); // Impede que o evento de carregar seja acionado
+    e.stopPropagation();
     onDeleteFilter(filter.id, filter.name);
   };
 
@@ -278,6 +296,13 @@ const FilterBar = ({
             }`}>
               {userData?.planType?.toUpperCase() || 'FREE'}
             </span>
+            <button
+              onClick={onRefresh}
+              className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+              title="Atualizar dados"
+            >
+              <FiRefreshCw className="w-4 h-4" />
+            </button>
           </div>
         </div>
         
@@ -289,13 +314,14 @@ const FilterBar = ({
         />
       </div>
 
-      {/* Grid de Filtros com 4 colunas (sem gênero) */}
+      {/* Grid de Filtros */}
+      {/* ALTERADO: grid-cols-5 para acomodar o novo filtro */}
       <div className="px-4 pb-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
           
           {/* Filtro 1: Cursos */}
           <div>
-            <label className="block z-25 text-sm font-medium text-gray-700 mb-2">Curso</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Curso</label>
             <MultiSelectDropdown
               title="Cursos"
               options={cursosOptions}
@@ -331,13 +357,25 @@ const FilterBar = ({
 
           {/* Filtro 4: Chamada */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Chamada</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Chamada</label>
+            <MultiSelectDropdown
+              title="Chamadas"
+              options={chamadasOptions}
+              selected={chamadas} 
+              onChange={(value) => setFilters(prev => ({ ...prev, chamadas: value }))}
+              placeholder="Todas as chamadas"
+            />
+          </div>
+
+          {/* NOVO: Filtro 5: Status */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
             <MultiSelectDropdown
-              title="Chamadas"
-              options={chamadasOptions}
-              selected={chamadas}
-              onChange={(value) => setFilters(prev => ({ ...prev, chamadas: value }))}
-              placeholder="Todas as chamadas"
+              title="Status"
+              options={statusOptions}
+              selected={status}
+              onChange={(value) => setFilters(prev => ({ ...prev, status: value }))}
+              placeholder="Todos os status"
             />
           </div>
 
@@ -348,20 +386,25 @@ const FilterBar = ({
       <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 rounded-b-lg">
         <div className="flex flex-col sm:flex-row justify-between items-center space-y-3 sm:space-y-0">
           {/* Contador de resultados */}
- <div className="text-sm text-gray-600">
-    {isFilterActive ? 'Filtros ativos - ' : 'Todos os '} 
-    {filteredStudents.length} estudantes  
-  </div>
+          <div className="text-sm text-gray-600">
+            {isFilterActive ? 'Filtros ativos - ' : 'Todos os '} 
+            {filteredStudents.length} estudantes
+            {accessInfo.planType === 'free' && (
+              <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
+                Chamada 1 apenas
+              </span>
+            )}
+          </div>
 
           {/* Botões de Ação */}
           <div className="flex items-center space-x-2">
             {/* Botão Salvar Planilha */}
             <button
               onClick={onExportSheet}
-              disabled={!isFilterActive}
+              disabled={filteredStudents.length === 0}
               className={`
                 flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors
-                ${isFilterActive
+                ${filteredStudents.length > 0
                   ? 'bg-green-600 text-white hover:bg-green-700'
                   : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                 }
@@ -373,7 +416,7 @@ const FilterBar = ({
             </button>
 
             {/* Botão Meus Filtros */}
-            <div className="relative z-25">
+            <div className="relative">
               <button
                 onClick={() => setIsLoadMenuOpen(!isLoadMenuOpen)}
                 className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -457,6 +500,3 @@ const FilterBar = ({
 };
 
 export default FilterBar;
-
-
-

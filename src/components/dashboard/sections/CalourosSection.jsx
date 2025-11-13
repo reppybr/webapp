@@ -13,16 +13,7 @@ import {
 } from 'react-icons/fi';
 import { calouroService } from '../../../services/calouroService';
 
-// Função para normalizar strings
-const normalizeString = (str) => {
-  if (!str) return '';
-  return str
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, ' ');
-};
+
 
 // --- COMPONENTES REUTILIZADOS ---
 
@@ -311,49 +302,10 @@ const CalourosSection = ({ userData }) => {
     campi: [],
     universidades: [],
   });
-  const republicType = userData?.republic?.tipo || 'mista';
-  // Criar chave consistente para estudantes
-  const createStudentKey = useCallback((name, course, university, campus) => {
-    return `${normalizeString(name)}-${normalizeString(course)}-${normalizeString(university)}-${normalizeString(campus)}`;
-  }, []);
 
-  // Buscar calouro no banco
-  const findCalouroInDatabase = useCallback(async (studentData) => {
-    try {
-      console.log('🟡 Buscando calouro no banco:', studentData.name);
-      
-      const response = await calouroService.getSelectedCalouros();
-      const calouros = response.calouros || [];
-      
-      const studentKey = createStudentKey(
-        studentData.name,
-        studentData.course,
-        studentData.university,
-        studentData.campus
-      );
-      
-      const calouroEncontrado = calouros.find(calouro => {
-        const calouroKey = createStudentKey(
-          calouro.name,
-          calouro.course,
-          calouro.university,
-          calouro.campus
-        );
-        return calouroKey === studentKey;
-      });
-      
-      if (calouroEncontrado) {
-        console.log(`✅ Calouro encontrado no banco: ${calouroEncontrado.name} (ID: ${calouroEncontrado.id}, Status: ${calouroEncontrado.status}, Favorito: ${calouroEncontrado.favourite})`);
-        return calouroEncontrado;
-      } else {
-        console.log(`❌ Calouro NÃO encontrado no banco: ${studentData.name}`);
-        return null;
-      }
-    } catch (error) {
-      console.error('🔴 Erro ao buscar calouro no banco:', error);
-      return null;
-    }
-  }, [createStudentKey]);
+
+
+
 
   const fetchCalouros = async () => {
     try {
@@ -424,19 +376,7 @@ const CalourosSection = ({ userData }) => {
     }
   };
   
-  const autoFilteredAllStudents = useMemo(() => {
-    if (!allStudents.length) return [];
-    
-    switch (republicType) {
-      case 'feminina':
-        return allStudents.filter(student => student.genero === 'Feminino');
-      case 'masculina':
-        return allStudents.filter(student => student.genero === 'Masculino');
-      case 'mista':
-      default:
-        return allStudents;
-    }
-  }, [allStudents, republicType]);
+
   useEffect(() => {
     fetchCalouros();
   }, []);
@@ -514,28 +454,26 @@ const CalourosSection = ({ userData }) => {
 // ✅ DEPOIS
 const { ALL_CURSOS, ALL_CAMPI, ALL_UNIVERSIDADES } = useMemo(() => {
   // 👇 Use a lista pré-filtrada
-  const cursos = [...new Set(autoFilteredAllStudents.map(student => student.curso).filter(Boolean))].sort();
-  const campi = [...new Set(autoFilteredAllStudents.map(student => student.campus).filter(Boolean))].sort();
-  const universidades = [...new Set(autoFilteredAllStudents.map(student => student.universidade).filter(Boolean))].sort();
+  const cursos = [...new Set(allStudents.map(student => student.curso).filter(Boolean))].sort();
+  const campi = [...new Set(allStudents.map(student => student.campus).filter(Boolean))].sort();
+  const universidades = [...new Set(allStudents.map(student => student.universidade).filter(Boolean))].sort();
   
   return { 
     ALL_CURSOS: cursos.length > 0 ? cursos : [], // Ajustado para retornar array vazio
     ALL_CAMPI: campi.length > 0 ? campi : [],
     ALL_UNIVERSIDADES: universidades.length > 0 ? universidades : []
   };
-}, [autoFilteredAllStudents]); // 👈 Dependência atualizada
+}, [allStudents]); // 👈 Dependência atualizada
 
   // 1. A lista base do "Funil" (apenas alunos com status diferente de 'Nenhum')
- const funilStudents = useMemo(() => {
-      return autoFilteredAllStudents.filter(student => 
-        student.status !== 'Nenhum' || student.isFavorited === true
-      );
-    }, [autoFilteredAllStudents]);
+  const funilStudents = useMemo(() => {
+    return allStudents;
+          }, [allStudents]);
   
   // 2. A lista de "Favoritos"
   const favoritedStudents = useMemo(() => {
-        return autoFilteredAllStudents.filter(student => student.isFavorited);
-      }, [autoFilteredAllStudents]);
+        return allStudents.filter(student => student.isFavorited);
+      }, [allStudents]);
 
   // 3. A lista do "Funil" *depois* de aplicar os filtros
   const filteredFunilStudents = useMemo(() => {
