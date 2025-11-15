@@ -414,16 +414,19 @@ const loginWithSolana = async () => {
     return user?.user_profile?.republic_members || [];
   };
   
-  // 🔥 MÉTODO PARA OBTER INFORMAÇÕES DA REPÚBLICA
   const getRepublicInfo = () => {
     const republica = getUserRepublic();
+    
+    console.log('🔍 DEBUG AuthContext - República completa:', republica);
+    console.log('🔍 DEBUG AuthContext - Tipo da república:', republica?.tipo);
+    
     if (!republica) return null;
     
     return {
       name: republica.name,
       city: republica.city,
       state: republica.state,
-      tipo: republica.tipo || 'mista',
+      tipo: republica.tipo, // Sem fallback aqui - deixe vir do banco
       university: republica.university,
       campus: republica.campus,
       capacity: republica.capacity,

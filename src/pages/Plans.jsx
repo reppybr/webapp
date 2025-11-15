@@ -61,7 +61,6 @@ const Planos = () => {
       type: 'free',
       price: { semestral: 'Grátis', anual: 'Grátis' },
       description: 'Perfeito para conhecer a plataforma e garantir os primeiros bixos.',
-      button: { text: 'Começar de graça', variant: 'secondary' },
       features: [
         { text: 'Acesso apenas à 1ª chamada do vestibular', included: true },
         { text: 'Filtros limitados (Curso e Cidade)', included: true },
@@ -75,7 +74,6 @@ const Planos = () => {
       type: 'basic',
       price: { semestral: 'R$ 80', anual: 'R$ 65' },
       description: 'A ferramenta completa para repúblicas que não perdem tempo.',
-      button: { text: 'Escolher Veterano', variant: 'primary' },
       popular: true,
       features: [
         { text: 'Acesso a TODAS as chamadas (listas de espera)', included: true },
@@ -90,7 +88,6 @@ const Planos = () => {
       type: 'premium',
       price: { semestral: 'R$ 120', anual: 'R$ 95' },
       description: 'Insights e dados customizados para repúblicas de alta performance.',
-      button: { text: 'Escolher Veterano Mor', variant: 'premium' },
       features: [
         { text: 'Tudo do plano Veterano', included: true },
         { text: 'Insights e tendências de cursos/cidades', included: true },
@@ -100,6 +97,59 @@ const Planos = () => {
       ],
     },
   ];
+
+  // 🔥 FUNÇÃO INTELIGENTE: Determinar texto e estado do botão
+  const getPlanButtonConfig = (planType) => {
+    const currentPlanType = getCurrentPlanType();
+    
+    // Se não tem plano ativo (novo usuário)
+    if (!currentPlanType) {
+      return {
+        text: 'Selecionar Plano',
+        disabled: false,
+        variant: planType === 'premium' ? 'premium' : planType === 'basic' ? 'primary' : 'secondary'
+      };
+    }
+
+    // Se já é o plano atual
+    if (currentPlanType === planType) {
+      return {
+        text: 'Plano Atual',
+        disabled: true,
+        variant: 'current'
+      };
+    }
+
+    // 🔥 LÓGICA DE UPGRADE/DOWNGRADE INTELIGENTE
+    const planHierarchy = { 'free': 0, 'basic': 1, 'premium': 2 };
+    const currentLevel = planHierarchy[currentPlanType];
+    const targetLevel = planHierarchy[planType];
+
+    // Upgrade permitido (sempre pode subir de nível)
+    if (targetLevel > currentLevel) {
+      return {
+        text: 'Atualizar Plano',
+        disabled: false,
+        variant: planType === 'premium' ? 'premium' : 'primary'
+      };
+    }
+
+    // Downgrade (não permitido por enquanto)
+    if (targetLevel < currentLevel) {
+      return {
+        text: 'Downgrade não disponível',
+        disabled: true,
+        variant: 'disabled'
+      };
+    }
+
+    // Plano do mesmo nível (não deveria acontecer)
+    return {
+      text: 'Indisponível',
+      disabled: true,
+      variant: 'disabled'
+    };
+  };
 
   const handlePlanSelection = async (planType, billingCycle = 'monthly') => {
     setIsLoading(true);
@@ -111,14 +161,15 @@ const Planos = () => {
         const params = new URLSearchParams({
           plan: planType,
           billing: billingCycle,
-          redirect: '/checkout' // 🔥 MUDA: Agora vai para checkout
+          redirect: '/checkout'
         }).toString();
         navigate(`/login?${params}`);
         return;
       }
   
-      // Se usuário já tem plano ativo, redireciona para dashboard
-      if (hasActivePlan()) {
+      // Se usuário já tem plano ativo e está tentando selecionar o mesmo, redireciona
+      const currentPlanType = getCurrentPlanType();
+      if (currentPlanType === planType) {
         navigate('/dashboard', { replace: true });
         return;
       }
@@ -149,25 +200,28 @@ const Planos = () => {
     }
   };
 
-  // Função para estilo do botão
-  const getButtonClass = (variant, popular, isCurrentPlan = false) => {
+  // 🔥 FUNÇÃO ATUALIZADA: Estilo do botão
+  const getButtonClass = (variant, isProcessing = false, isDisabled = false) => {
     let baseClass = "w-full py-3 px-6 rounded-lg font-bold text-center transition duration-200";
     
-    if (isCurrentPlan) {
+    if (isDisabled || isProcessing) {
       return `${baseClass} bg-gray-300 text-gray-600 cursor-not-allowed`;
     }
     
-    if (variant === 'primary') {
-      return `${baseClass} bg-[#1bff17] text-black hover:bg-opacity-80 ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`;
+    switch (variant) {
+      case 'primary':
+        return `${baseClass} bg-[#1bff17] text-black hover:bg-opacity-80 hover:scale-105`;
+      case 'premium':
+        return `${baseClass} bg-white text-gray-900 hover:bg-gray-200 hover:scale-105`;
+      case 'secondary':
+        return `${baseClass} bg-gray-100 text-gray-800 hover:bg-gray-200 hover:scale-105`;
+      case 'current':
+        return `${baseClass} bg-blue-500 text-white cursor-not-allowed`;
+      case 'disabled':
+        return `${baseClass} bg-gray-300 text-gray-600 cursor-not-allowed`;
+      default:
+        return `${baseClass} bg-gray-100 text-gray-800 hover:bg-gray-200 hover:scale-105`;
     }
-    if (variant === 'premium') {
-      return `${baseClass} bg-white text-gray-900 hover:bg-gray-200 ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`;
-    }
-    // secondary (Bixo)
-    if (popular) {
-      return `${baseClass} bg-gray-800 text-white hover:bg-gray-700 ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`;
-    }
-    return `${baseClass} bg-gray-100 text-gray-800 hover:bg-gray-200 ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`;
   };
 
   const getCurrentPlanType = () => {
@@ -186,7 +240,8 @@ const Planos = () => {
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
             Encontre os bixos antes de todo mundo
           </h1>
-       
+          
+        
           
           {/* Toggle de Faturamento */}
           <div className="inline-flex bg-gray-200 rounded-full p-1 relative">
@@ -220,6 +275,10 @@ const Planos = () => {
             const isProcessing = isLoading && selectedPlan === plan.type;
             const billingCycle = billing === 'anual' ? 'yearly' : 'semester';
             
+            // 🔥 CONFIGURAÇÃO INTELIGENTE DO BOTÃO
+            const buttonConfig = getPlanButtonConfig(plan.type);
+            const isButtonDisabled = buttonConfig.disabled || isProcessing;
+
             return (
               <div
                 key={plan.name}
@@ -281,31 +340,43 @@ const Planos = () => {
                   </ul>
                 </div>
                 
-                {/* Botão */}
+                {/* 🔥 BOTÃO COM LÓGICA INTELIGENTE */}
                 <div className="mt-10">
                   <button 
                     onClick={() => handlePlanSelection(plan.type, billingCycle)}
-                    disabled={isLoading || isCurrentPlan}
-                    className={getButtonClass(plan.button.variant, plan.popular, isCurrentPlan)}
+                    disabled={isButtonDisabled}
+                    className={getButtonClass(buttonConfig.variant, isProcessing, isButtonDisabled)}
                   >
-                    {isCurrentPlan ? (
-                      'Plano Atual'
-                    ) : isProcessing ? (
+                    {isProcessing ? (
                       <div className="flex items-center justify-center">
                         <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2"></div>
                         Processando...
                       </div>
                     ) : (
-                      plan.button.text
+                      buttonConfig.text
                     )}
                   </button>
+
+                  {/* 🔥 MENSAGENS EXPLICATIVAS */}
+                  {currentPlanType && !isCurrentPlan && (
+                    <div className="mt-2 text-xs text-center">
+                      {buttonConfig.variant === 'disabled' && (
+                        <span className="text-gray-500">
+                          {plan.type === 'free' && currentPlanType === 'premium' && 'Contate o suporte para downgrade'}
+                          {plan.type === 'free' && currentPlanType === 'basic' && 'Downgrade não disponível'}
+                          {plan.type === 'basic' && currentPlanType === 'premium' && 'Já possui plano superior'}
+                        </span>
+                      )}
+                   
+                    </div>
+                  )}
                 </div>
               </div>
             );
           })}
         </div>
 
-   
+     
       </div>
     </div>
   );

@@ -11,13 +11,19 @@ import AjudaSection from './sections/AjudaSection';
 /**
  * Componente de Conteúdo Principal
  */
-const MainContent = ({ activeSection, userData }) => { // 🔥 RECEBE TODOS OS DADOS
+const MainContent = ({ activeSection, userData, navigationState }) => { // 🔥 RECEBE navigationState
 
   // Função para renderizar o componente da seção correta
   const renderSection = () => {
     switch (activeSection) {
       case 'dashboard':
-        return <DashboardSection userData={userData} />; // 🔥 PASSA TODOS OS DADOS
+        return (
+          <DashboardSection 
+            userData={userData} 
+            // 🔥 PASSA O STATE DA NAVEGAÇÃO PARA O DASHBOARD
+            navigationState={navigationState}
+          />
+        );
       case 'filtros':
         return <FiltrosSection userData={userData} />;
       case 'calouros':
@@ -30,7 +36,12 @@ const MainContent = ({ activeSection, userData }) => { // 🔥 RECEBE TODOS OS D
         return <AjudaSection userData={userData} />;
       default:
         // Renderiza o dashboard como padrão
-        return <DashboardSection userData={userData} />;
+        return (
+          <DashboardSection 
+            userData={userData} 
+            navigationState={navigationState}
+          />
+        );
     }
   };
 

@@ -6,7 +6,7 @@ import { useLocation } from '../hooks/useLocation';
 
 const CompleteRegistration = () => {
   const [republicName, setRepublicName] = useState('');
-  const [republicType, setRepublicType] = useState('mista');
+  const [republicType, setRepublicType] = useState('');
   const [selectedState, setSelectedState] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -131,19 +131,7 @@ const CompleteRegistration = () => {
               : 'Crie sua república e comece a gerenciar suas contas'}
           </p>
           
-          {/* 🔥 NOVO: Indicador de progresso do plano */}
-          {showPlanRedirectNotice && (
-            <div className="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-3">
-              <div className="flex items-center justify-center text-blue-700">
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-                <span className="text-sm font-medium">
-                  Em seguida, você escolherá o plano <span className="capitalize">{planParam}</span>
-                </span>
-              </div>
-            </div>
-          )}
+       
         </div>
 
         {error && (

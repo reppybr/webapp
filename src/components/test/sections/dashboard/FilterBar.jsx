@@ -1,10 +1,16 @@
-import React, { useState, useMemo } from 'react';
-import { FiChevronDown, FiFilter, FiSave, FiDownload, FiX, FiSearch } from 'react-icons/fi';
+// 🔥 IMPORTS ATUALIZADOS: Adicionado useRef e useEffect
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { FiChevronDown, FiFilter, FiSave, FiDownload, FiX, FiSearch, FiTrash2, FiLoader, FiRefreshCw } from 'react-icons/fi';
 
-// Componente reutilizável para o dropdown multi-select com search
+// =====================================================================
+// 🔥 COMPONENTE ATUALIZADO: MultiSelectDropdown (com UX corrigido)
+// =====================================================================
 const MultiSelectDropdown = ({ title, options = [], selected = [], onChange, placeholder = "Selecionar..." }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // 🔥 UX FIX 1: Ref para detectar cliques fora do dropdown
+  const dropdownRef = useRef(null);
 
   // Filtrar opções baseado no search
   const filteredOptions = useMemo(() => {
@@ -29,8 +35,23 @@ const MultiSelectDropdown = ({ title, options = [], selected = [], onChange, pla
     onChange([]);
   };
 
+  // 🔥 UX FIX 1 (Continuação): Lógica para fechar o dropdown ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+        setSearchTerm(''); // Limpa a busca ao fechar
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [dropdownRef]);
+
   return (
-    <div className="relative">
+    // 🔥 UX FIX 1: Aplicado o ref
+    <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center justify-between w-full px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -59,14 +80,12 @@ const MultiSelectDropdown = ({ title, options = [], selected = [], onChange, pla
 
       {isOpen && (
         <div 
-          className="absolute z-30 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-hidden"
-          onMouseLeave={() => {
-            setIsOpen(false);
-            setSearchTerm('');
-          }}
+          // 🔥 UX FIX 1: Removido onMouseLeave
+          // 🔥 UX REFACTOR: Adicionado 'flex flex-col' para estruturar o menu
+          className="absolute z-30 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 flex flex-col"
         >
-          {/* Search Input */}
-          <div className="p-2 border-b border-gray-100">
+          {/* Search Input (Fica fixo no topo) */}
+          <div className="p-2 border-b border-gray-100 flex-shrink-0">
             <div className="relative">
               <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
@@ -75,7 +94,7 @@ const MultiSelectDropdown = ({ title, options = [], selected = [], onChange, pla
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()} // Impede que clicar na busca feche o menu
               />
               {searchTerm && (
                 <button
@@ -88,13 +107,15 @@ const MultiSelectDropdown = ({ title, options = [], selected = [], onChange, pla
             </div>
           </div>
 
-          {/* Options List */}
-          <div className="max-h-48 overflow-y-auto">
+          {/* Options List (Esta área rola) */}
+          {/* 🔥 UX REFACTOR: 'max-h-full' faz a lista preencher o espaço disponível */}
+          <div className="max-h-full overflow-y-auto">
             {filteredOptions.length > 0 ? (
               filteredOptions.map((option) => (
                 <label
                   key={option}
-                  className="flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-b-0"
+                  // 🔥 UX FIX 2: Trocado 'border-gray-50' por 'border-gray-100'
+                  className="flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
                 >
                   <input
                     type="checkbox"
@@ -114,9 +135,9 @@ const MultiSelectDropdown = ({ title, options = [], selected = [], onChange, pla
             )}
           </div>
 
-          {/* Selected Count */}
+          {/* Selected Count (Fica fixo no rodapé) */}
           {selected.length > 0 && (
-            <div className="px-3 py-2 text-xs text-gray-500 bg-gray-50 border-t border-gray-100">
+            <div className="px-3 py-2 text-xs text-gray-500 bg-gray-50 border-t border-gray-100 flex-shrink-0">
               {selected.length} selecionado(s)
             </div>
           )}
@@ -125,20 +146,25 @@ const MultiSelectDropdown = ({ title, options = [], selected = [], onChange, pla
     </div>
   );
 };
+// =====================================================================
+// (Fim do MultiSelectDropdown)
+// =====================================================================
+
 
 // Componente para mostrar chips dos filtros ativos
 const ActiveFilters = ({ filters, onRemoveFilter, republicType }) => {
-  const { cursos, universidades, unidades, chamadas } = filters;
+  const { cursos, universidades, unidades, chamadas, status } = filters;
   
   const activeFilters = [];
   
-  // Filtro automático da república
-  activeFilters.push({ 
-    type: 'republicType', 
-    label: `República ${republicType}`, 
-    value: republicType,
-    isAuto: true 
-  });
+  if (republicType && republicType !== 'mista') {
+    activeFilters.push({ 
+      type: 'republicType', 
+      label: `República ${republicType === 'masculina' ? 'Masculina' : 'Feminina'}`, 
+      value: republicType,
+      isAuto: true 
+    });
+  }
   
   cursos.forEach(curso => {
     activeFilters.push({ type: 'curso', label: `Curso: ${curso}`, value: curso });
@@ -156,11 +182,18 @@ const ActiveFilters = ({ filters, onRemoveFilter, republicType }) => {
     activeFilters.push({ type: 'chamada', label: `${chamada}ª Chamada`, value: chamada });
   });
 
+  status.forEach(stat => {
+    activeFilters.push({ type: 'status', label: `Status: ${stat}`, value: stat });
+  });
+
+  // Mostra "Limpar filtros" apenas se houver filtros manuais
+  const hasManualFilters = activeFilters.some(f => !f.isAuto);
+
   if (activeFilters.length === 0) return null;
 
   return (
     <div className="flex flex-wrap gap-2 mb-4">
-      {activeFilters.map((filter, index) => (
+      {activeFilters.map((filter) => (
         <span
           key={`${filter.type}-${filter.value}`}
           className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
@@ -180,46 +213,80 @@ const ActiveFilters = ({ filters, onRemoveFilter, republicType }) => {
           )}
         </span>
       ))}
-      <button
-        onClick={() => onRemoveFilter('all')}
-        className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200"
-      >
-        Limpar filtros
-        <FiX className="w-3 h-3 ml-1" />
-      </button>
+      {hasManualFilters && (
+        <button
+          onClick={() => onRemoveFilter('all')}
+          className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200"
+        >
+          Limpar filtros
+          <FiX className="w-3 h-3 ml-1" />
+        </button>
+      )}
     </div>
   );
 };
 
-// Componente principal da Barra de Filtros
-const FilterBar = ({ filters, setFilters, onSaveFilter, onExportSheet, filterOptions = {}, userData = {}, republicType = 'mista' }) => {
-  const { cursos, universidades, unidades, chamadas } = filters;
+const FilterBar = ({ 
+  filters, 
+  setFilters, 
+  onSaveFilter, 
+  onExportSheet, 
+  onLoadFilter,
+  onDeleteFilter,
+  onRefresh,
+  savedFilters = [],
+  isLoadingFilters = false,
+  filterOptions = {}, 
+  userData = {}, 
+  republicType, 
+  filteredStudents = [],
+  accessInfo = {}
+}) => {
+  const { cursos, universidades, unidades, chamadas, status } = filters;
   
-  // Garantir que filterOptions sempre tenha valores padrão
   const { 
     cursos: cursosOptions = [], 
     universidades: universidadesOptions = [], 
     unidades: unidadesOptions = [], 
-    chamadas: chamadasOptions = [] 
+    chamadas: chamadasOptions = [],
+    status: statusOptions = [] 
   } = filterOptions;
 
   const [isLoadMenuOpen, setIsLoadMenuOpen] = useState(false);
+  
+  // 🔥 UX FIX: Ref para o menu de "Meus Filtros"
+  const loadMenuRef = useRef(null);
 
-  // Verificar se há filtros ativos (sem gênero)
   const isFilterActive = cursos.length > 0 || 
                          universidades.length > 0 || 
                          unidades.length > 0 || 
-                         chamadas.length > 0;
+                         chamadas.length > 0 ||
+                         status.length > 0;
+
+  // 🔥 UX FIX: Lógica "clicar fora" para o menu "Meus Filtros"
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (loadMenuRef.current && !loadMenuRef.current.contains(event.target)) {
+        setIsLoadMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [loadMenuRef]);
 
   // Remover filtro individual
   const handleRemoveFilter = (type, value) => {
     if (type === 'all') {
-      setFilters({
+      setFilters(prev => ({
+        ...prev, // Mantém o 'q' (busca por nome) se existir
         cursos: [],
         universidades: [],
         unidades: [],
-        chamadas: []
-      });
+        chamadas: [],
+        status: []
+      }));
       return;
     }
 
@@ -236,37 +303,51 @@ const FilterBar = ({ filters, setFilters, onSaveFilter, onExportSheet, filterOpt
       case 'chamada':
         setFilters(prev => ({ ...prev, chamadas: prev.chamadas.filter(c => c !== value) }));
         break;
+      case 'status':
+        setFilters(prev => ({ ...prev, status: prev.status.filter(s => s !== value) }));
+        break;
       default:
         break;
     }
   };
 
-  // Mock de filtros salvos
-  const MOCKED_SAVED_FILTERS = [
-    { id: 1, name: 'Engenharias - Unicamp' },
-    { id: 2, name: 'Saúde' },
-    { id: 3, name: 'FT e FCA' },
-  ];
-
-  const handleLoadFilter = (filterName) => {
-    console.log("Carregar filtro:", filterName);
+  const handleLoadFilter = (filter) => {
+    console.log('🟡 Carregando filtro:', filter);
+    onLoadFilter(filter.id);
     setIsLoadMenuOpen(false);
   };
 
+  const handleDeleteFilter = (e, filter) => {
+    e.stopPropagation();
+    onDeleteFilter(filter.id, filter.name);
+  };
+  
+  // 🔥 NOVO: Handler para a barra de busca principal
+  const handleSearchChange = (e) => {
+    setFilters(prev => ({ ...prev, q: e.target.value }));
+  };
+
   return (
-    <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 relative z-40">
+    <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 relative z-10">
       {/* Cabeçalho informativo */}
       <div className="px-4 pt-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-lg font-semibold text-gray-900">Filtros</h3>
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-3">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2 md:mb-0">Filtros</h3>
           <div className="flex items-center space-x-2">
             <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-              userData?.isFree ? 'bg-gray-100 text-gray-700' :
-              userData?.isBasic ? 'bg-blue-100 text-blue-700' :
+              accessInfo?.planType === 'free' ? 'bg-gray-100 text-gray-700' :
+              accessInfo?.planType === 'basic' ? 'bg-blue-100 text-blue-700' :
               'bg-purple-100 text-purple-700'
             }`}>
-              {userData?.planType?.toUpperCase() || 'FREE'}
+              {accessInfo?.planType?.toUpperCase() || 'FREE'}
             </span>
+            <button
+              onClick={onRefresh}
+              className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+              title="Atualizar dados"
+            >
+              <FiRefreshCw className="w-4 h-4" />
+            </button>
           </div>
         </div>
         
@@ -278,13 +359,29 @@ const FilterBar = ({ filters, setFilters, onSaveFilter, onExportSheet, filterOpt
         />
       </div>
 
-      {/* Grid de Filtros com 4 colunas (sem gênero) */}
+      {/* Grid de Filtros */}
       <div className="px-4 pb-4">
+        {/* 🔥 NOVO: Barra de Busca Principal */}
+        <div className="mb-3">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Buscar por nome</label>
+          <div className="relative">
+            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type="text"
+              placeholder="Digite o nome do calouro..."
+              value={filters.q || ''}
+              onChange={handleSearchChange}
+              className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+        
+        {/* Grid de Dropdowns */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           
           {/* Filtro 1: Cursos */}
           <div>
-            <label className="block z-25 text-sm font-medium text-gray-700 mb-2">Curso</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Curso</label>
             <MultiSelectDropdown
               title="Cursos"
               options={cursosOptions}
@@ -324,70 +421,98 @@ const FilterBar = ({ filters, setFilters, onSaveFilter, onExportSheet, filterOpt
             <MultiSelectDropdown
               title="Chamadas"
               options={chamadasOptions}
-              selected={chamadas}
+              selected={chamadas} 
               onChange={(value) => setFilters(prev => ({ ...prev, chamadas: value }))}
-              placeholder="Todas as chamadas"
+              placeholder={accessInfo?.planType === 'free' ? 'Apenas 1ª Chamada' : 'Todas as chamadas'}
+              // Desabilitar se for free
+              // disabled={accessInfo?.planType === 'free'} 
             />
           </div>
-
+          
+          {/* 🔥 ATENÇÃO: Movi o filtro de Status para a barra de ações,
+             pois ele é um filtro "do lado do cliente" e não "do lado do servidor"
+             como os outros. Misturá-los pode confundir o usuário.
+          */}
         </div>
       </div>
 
       {/* Barra de Ações */}
       <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 rounded-b-lg">
         <div className="flex flex-col sm:flex-row justify-between items-center space-y-3 sm:space-y-0">
-          {/* Contador de resultados */}
-        
+          
+          {/* 🔥 NOVO: Filtro de Status movido para cá */}
+          <div className="w-full sm:w-auto">
+             <MultiSelectDropdown
+               title="Status"
+               options={statusOptions}
+               selected={status}
+               onChange={(value) => setFilters(prev => ({ ...prev, status: value }))}
+               placeholder="Filtrar por Status"
+             />
+          </div>
 
           {/* Botões de Ação */}
           <div className="flex items-center space-x-2">
             {/* Botão Salvar Planilha */}
             <button
               onClick={onExportSheet}
-              disabled={!isFilterActive}
+              disabled={filteredStudents.length === 0 || accessInfo?.planType === 'free'}
               className={`
                 flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors
-                ${isFilterActive
+                ${(filteredStudents.length > 0 && accessInfo?.planType !== 'free')
                   ? 'bg-green-600 text-white hover:bg-green-700'
                   : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                 }
                 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500
               `}
+              title={accessInfo?.planType === 'free' ? "Disponível no plano Básico ou Premium" : "Exportar dados filtrados"}
             >
               <FiDownload className="w-4 h-4 mr-2" />
-              Exportar CSV
+              Exportar
             </button>
 
-           
-            <div className="relative z-25">
+            {/* Botão Meus Filtros */}
+            {/* 🔥 UX FIX: Aplicado o ref */}
+            <div className="relative" ref={loadMenuRef}>
               <button
                 onClick={() => setIsLoadMenuOpen(!isLoadMenuOpen)}
                 className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 <FiFilter className="w-4 h-4 mr-2" />
                 Meus Filtros
-                <FiChevronDown className={`w-4 h-4 ml-2 transition-transform ${isLoadMenuOpen ? 'transform rotate-180' : ''}`} />
+                {isLoadingFilters ? (
+                  <FiLoader className="w-4 h-4 ml-2 animate-spin" />
+                ) : (
+                  <FiChevronDown className={`w-4 h-4 ml-2 transition-transform ${isLoadMenuOpen ? 'transform rotate-180' : ''}`} />
+                )}
               </button>
 
               {isLoadMenuOpen && (
                 <div 
+                  // 🔥 UX FIX: Removido onMouseLeave
                   className="absolute right-0 z-50 w-64 mt-2 bg-white border border-gray-200 rounded-md shadow-lg"
-                  onMouseLeave={() => setIsLoadMenuOpen(false)}
                 >
                   <div className="py-1 max-h-60 overflow-y-auto">
-                    {MOCKED_SAVED_FILTERS.length > 0 ? (
-                      MOCKED_SAVED_FILTERS.map((filter) => (
-                        <button
+                    {savedFilters.length > 0 ? (
+                      savedFilters.map((filter) => (
+                        <div
                           key={filter.id}
-                          onClick={() => handleLoadFilter(filter.name)}
-                          className="w-full text-left block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100 last:border-b-0"
+                          className="group relative flex items-center justify-between px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100 last:border-b-0 cursor-pointer"
+                          onClick={() => handleLoadFilter(filter)}
                         >
-                          {filter.name}
-                        </button>
+                          <span className="flex-1 truncate">{filter.name}</span>
+                          <button
+                            onClick={(e) => handleDeleteFilter(e, filter)}
+                            className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-600 transition-opacity"
+                            title="Excluir filtro"
+                          >
+                            <FiTrash2 className="w-3 h-3" />
+                          </button>
+                        </div>
                       ))
                     ) : (
                       <div className="px-4 py-2 text-sm text-gray-500">
-                        Nenhum filtro salvo
+                        {isLoadingFilters ? 'Carregando...' : 'Nenhum filtro salvo'}
                       </div>
                     )}
                   </div>
@@ -398,19 +523,20 @@ const FilterBar = ({ filters, setFilters, onSaveFilter, onExportSheet, filterOpt
             {/* Botão Salvar Filtro */}
             <button
               onClick={onSaveFilter}
-              disabled={!isFilterActive} 
+              disabled={!isFilterActive || accessInfo?.planType === 'free'} 
               className={`
                 flex items-center px-4 py-2 text-sm font-medium rounded-md
                 transition-colors
-                ${isFilterActive
+                ${(isFilterActive && accessInfo?.planType !== 'free')
                   ? 'bg-blue-600 text-white hover:bg-blue-700'
                   : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                 }
                 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
               `}
+              title={accessInfo?.planType === 'free' ? "Disponível no plano Básico ou Premium" : "Salvar filtros atuais"}
             >
               <FiSave className="w-4 h-4 mr-2" />
-              Salvar Filtro
+              Salvar
             </button>
           </div>
         </div>

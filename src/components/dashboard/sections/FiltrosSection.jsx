@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   FiFilter, 
   FiMoreVertical, 
-  FiPlay,
+
   FiEdit2, 
   FiTrash2,
   FiInbox,
@@ -38,7 +38,7 @@ const FreePlanBlock = () => {
           Os <strong>Filtros Salvos</strong> estão disponíveis apenas para planos 
           <span className="text-green-600 font-semibold"> Veterano</span> e <span className="text-purple-600 font-semibold"> Veterano Mor</span>.
           <br />
-          Faça upgrade para salvar e gerenciar seus filtros personalizados.
+         
         </p>
         
         <div className="bg-gray-50 rounded-lg p-4 mb-6">
@@ -50,7 +50,7 @@ const FreePlanBlock = () => {
             </li>
             <li className="flex items-center">
               <FiStar className="w-4 h-4 mr-2 text-green-500" />
-              Salvar combinações de filtros
+              Exportar os dados em CSV
             </li>
             <li className="flex items-center">
               <FiStar className="w-4 h-4 mr-2 text-green-500" />
@@ -145,13 +145,7 @@ const FilterCard = ({ filter, onLoad, onEdit, onDelete }) => {
 
             {isMenuOpen && (
               <div className="absolute right-0 z-10 w-48 mt-1 bg-white rounded-md shadow-xl border border-gray-200 py-1">
-                <button
-                  onClick={() => { onLoad(filter); setIsMenuOpen(false); }}
-                  className="w-full flex items-center px-4 py-2 text-sm text-gray-900 hover:bg-gray-100"
-                >
-                  <FiPlay className="w-4 h-4 mr-3" />
-                  Carregar
-                </button>
+              
                 <button
                   onClick={() => { onEdit(filter); setIsMenuOpen(false); }}
                   className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -217,13 +211,7 @@ const EmptyState = ({ onRefresh }) => {
         Você ainda não salvou nenhum filtro. Tente salvar uma
         combinação na tela 'Painel' para que ela apareça aqui.
       </p>
-      <button
-        onClick={onRefresh}
-        className="flex items-center text-gray-600 hover:text-gray-900"
-      >
-        <FiRefreshCw className="w-4 h-4 mr-2" />
-        Recarregar
-      </button>
+   
     </div>
   );
 };
@@ -339,7 +327,7 @@ const FiltrosSection = ({ userData }) => {
   const [filters, setFilters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalState, setModalState] = useState({ type: null, filter: null });
-  const navigate = useNavigate();
+
   const { isFree, isBasic, isPremium } = useAuth();
 
   // Verificar se o usuário é free
@@ -375,29 +363,7 @@ const FiltrosSection = ({ userData }) => {
     loadFilters();
   }, [userIsFree]);
 
-  // Handlers para Ações
-  const handleLoad = async (filter) => {
-    try {
-      console.log("🟡 Carregando filtro:", filter.name);
-      
-      // Carregar os critérios completos do filtro
-      const filterData = await filterService.loadFilter(filter.id);
-      
-      // 🔥 CORREÇÃO: Navegar para o dashboard com os filtros aplicados
-      // Usando state para passar o filtro carregado
-      navigate('/dashboard', { 
-        state: { 
-          loadedFilter: filterData,
-          filterName: filter.name 
-        }
-      });
-      
-      toast.success(`Filtro "${filter.name}" carregado! Redirecionando para o painel...`);
-    } catch (error) {
-      console.error('🔴 Erro ao carregar filtro:', error);
-      toast.error('Erro ao carregar filtro');
-    }
-  };
+ 
   const handleEdit = (filter) => {
     console.log("Abrir modal de edição para:", filter.name);
     setModalState({ type: 'edit', filter: filter });
@@ -491,7 +457,7 @@ const FiltrosSection = ({ userData }) => {
             <FilterCard 
               key={filter.id}
               filter={filter}
-              onLoad={handleLoad}
+           
               onEdit={handleEdit}
               onDelete={handleDelete}
             />

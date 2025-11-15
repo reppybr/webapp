@@ -6,6 +6,7 @@ import {
   FiXCircle, 
   FiPhone, 
   FiMinus,
+  FiSmile,
   FiChevronLeft,
   FiChevronRight,
   FiChevronsLeft,
@@ -32,6 +33,13 @@ const statusOptions = {
     text: 'text-blue-700',
     border: 'border-blue-300'
   },
+  'Interessado': {
+    label: 'Interessado', 
+    icon: FiSmile,
+    bg: 'bg-yellow-100',
+    text: 'text-yellow-800',
+    border: 'border-yellow-300'
+  },
   'Sucesso': { 
     label: 'Sucesso', 
     icon: FiCheckCircle, 
@@ -46,10 +54,11 @@ const statusOptions = {
     text: 'text-red-700',
     border: 'border-red-300'
   },
+  
 };
 
 /**
- * 1. Componente Dropdown de Status CORRIGIDO
+ * 1. Componente Dropdown de Status
  */
 const StatusSelector = React.memo(({ currentStatus, onStatusChange }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -78,7 +87,7 @@ const StatusSelector = React.memo(({ currentStatus, onStatusChange }) => {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center justify-between w-32 px-3 py-1.5 text-sm font-medium rounded-md border transition-all duration-200 ${activeStyle.bg} ${activeStyle.text} ${activeStyle.border} hover:opacity-90`}
+        className={`flex items-center justify-between w-full px-3 py-1.5 text-sm font-medium rounded-md border transition-all duration-200 ${activeStyle.bg} ${activeStyle.text} ${activeStyle.border} hover:opacity-90`}
       >
         <div className="flex items-center">
           <activeStyle.icon className="w-4 h-4 mr-2" />
@@ -110,7 +119,7 @@ const StatusSelector = React.memo(({ currentStatus, onStatusChange }) => {
 StatusSelector.displayName = 'StatusSelector';
 
 /**
- * 2. Componente de Linha da Tabela CORRIGIDO
+ * 2. Componente de Linha da Tabela (MODIFICADO)
  */
 const StudentTableRow = React.memo(({ student, onToggleFavorite, onStatusChange }) => {
   const isFavorited = student.isFavorited || false;
@@ -125,9 +134,10 @@ const StudentTableRow = React.memo(({ student, onToggleFavorite, onStatusChange 
   }, [student.id, onStatusChange]);
 
   return (
+    // 🔥 REMOVIDO 'sticky' e 'z-10' das colunas de Nome e Favorito
     <tr className="hover:bg-gray-50 border-b border-gray-100 transition-colors duration-150">
       {/* Coluna Favorito */}
-      <td className="px-4 py-3 whitespace-nowrap text-center sticky left-0 bg-white z-10 border-r border-gray-200">
+      <td className="px-4 py-3 text-center border-r border-gray-200">
         <button 
           onClick={handleFavoriteClick}
           className={`p-2 rounded-full transition-all duration-200 transform hover:scale-110 ${
@@ -142,23 +152,26 @@ const StudentTableRow = React.memo(({ student, onToggleFavorite, onStatusChange 
       </td>
       
       {/* Coluna Nome */}
-      <td className="px-4 py-3 whitespace-nowrap min-w-[180px] sticky left-16 bg-white z-10 border-r border-gray-200">
-        <div className="text-sm font-medium text-gray-900 truncate" title={student.nome}>
+      {/* 🔥 REMOVIDO 'whitespace-nowrap', 'min-w-[...]', 'sticky', 'z-10', 'truncate' */}
+      <td className="px-4 py-3 border-r border-gray-200">
+        <div className="text-sm font-medium text-gray-900 break-words" title={student.nome}>
           {student.nome}
         </div>
       </td>
 
       {/* Coluna Chamada */}
-      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 text-center min-w-[80px]">
+      {/* 🔥 REMOVIDO 'whitespace-nowrap', 'min-w-[...]' */}
+      <td className="px-4 py-3 text-sm text-gray-600 text-center">
         <span className="inline-flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold">
           {student.chamada}
         </span>
       </td>
       
       {/* Coluna Curso */}
-      <td className="px-4 py-3 whitespace-nowrap min-w-[200px]">
+      {/* 🔥 REMOVIDO 'whitespace-nowrap', 'min-w-[...]' e 'truncate' do span */}
+      <td className="px-4 py-3">
         <span 
-          className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 truncate max-w-full hover:max-w-none transition-all duration-200" 
+          className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 break-words" 
           title={student.curso}
         >
           {student.curso}
@@ -166,27 +179,24 @@ const StudentTableRow = React.memo(({ student, onToggleFavorite, onStatusChange 
       </td>
       
       {/* Coluna Universidade */}
-      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 min-w-[180px]">
-        <div 
-          className="truncate max-w-[170px] hover:max-w-none transition-all duration-200 hover:bg-gray-50 hover:px-2 hover:py-1 hover:rounded" 
-          title={student.universidade}
-        >
+      {/* 🔥 REMOVIDO 'whitespace-nowrap', 'min-w-[...]' e 'truncate' do div */}
+      <td className="px-4 py-3 text-sm text-gray-600">
+        <div className="break-words" title={student.universidade}>
           {student.universidade}
         </div>
       </td>
       
       {/* Coluna Unidade */}
-      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 min-w-[150px]">
-        <div 
-          className="truncate max-w-[140px] hover:max-w-none transition-all duration-200 hover:bg-gray-50 hover:px-2 hover:py-1 hover:rounded" 
-          title={student.unidade}
-        >
+      {/* 🔥 REMOVIDO 'whitespace-nowrap', 'min-w-[...]' e 'truncate' do div */}
+      <td className="px-4 py-3 text-sm text-gray-600">
+        <div className="break-words" title={student.unidade}>
           {student.unidade}
         </div>
       </td>
       
       {/* Coluna Gênero */}
-      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 min-w-[100px]">
+      {/* 🔥 REMOVIDO 'whitespace-nowrap', 'min-w-[...]' */}
+      <td className="px-4 py-3 text-sm text-gray-600">
         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
           student.genero === 'Masculino' 
             ? 'bg-blue-100 text-blue-800'
@@ -199,7 +209,8 @@ const StudentTableRow = React.memo(({ student, onToggleFavorite, onStatusChange 
       </td>
       
       {/* Coluna Status */}
-      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 min-w-[140px]">
+      {/* 🔥 REMOVIDO 'whitespace-nowrap', 'min-w-[...]' */}
+      <td className="px-4 py-3 text-sm text-gray-600">
         <StatusSelector 
           currentStatus={status}
           onStatusChange={handleStatusChange} 
@@ -212,7 +223,7 @@ const StudentTableRow = React.memo(({ student, onToggleFavorite, onStatusChange 
 StudentTableRow.displayName = 'StudentTableRow';
 
 /**
- * 3. Componente de Paginação Profissional
+ * 3. Componente de Paginação Profissional (Sem alterações)
  */
 const Pagination = React.memo(({ 
   currentPage, 
@@ -353,81 +364,16 @@ const Pagination = React.memo(({
 Pagination.displayName = 'Pagination';
 
 /**
- * 4. Componente de Indicador de Rolagem Horizontal
+ * 4. Componente ScrollIndicator (REMOVIDO)
  */
-const ScrollIndicator = React.memo(({ tableRef }) => {
-  const [showLeft, setShowLeft] = useState(false);
-  const [showRight, setShowRight] = useState(false);
-
-  useEffect(() => {
-    const checkScroll = () => {
-      if (tableRef.current) {
-        const { scrollLeft, scrollWidth, clientWidth } = tableRef.current;
-        setShowLeft(scrollLeft > 10);
-        setShowRight(scrollLeft < scrollWidth - clientWidth - 10);
-      }
-    };
-
-    const tableElement = tableRef.current;
-    if (tableElement) {
-      tableElement.addEventListener('scroll', checkScroll);
-      checkScroll();
-
-      window.addEventListener('resize', checkScroll);
-      
-      return () => {
-        tableElement.removeEventListener('scroll', checkScroll);
-        window.removeEventListener('resize', checkScroll);
-      };
-    }
-  }, [tableRef]);
-
-  const scrollLeft = useCallback(() => {
-    if (tableRef.current) {
-      tableRef.current.scrollBy({ left: -300, behavior: 'smooth' });
-    }
-  }, [tableRef]);
-
-  const scrollRight = useCallback(() => {
-    if (tableRef.current) {
-      tableRef.current.scrollBy({ left: 300, behavior: 'smooth' });
-    }
-  }, [tableRef]);
-
-  return (
-    <>
-      {/* Indicador esquerdo */}
-      {showLeft && (
-        <button
-          onClick={scrollLeft}
-          className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white border border-gray-300 rounded-full p-3 shadow-lg hover:bg-gray-50 hover:shadow-xl transition-all duration-200 z-20"
-          title="Rolar para esquerda"
-        >
-          <FiChevronLeft className="w-4 h-4 text-gray-600" />
-        </button>
-      )}
-      
-      {/* Indicador direito */}
-      {showRight && (
-        <button
-          onClick={scrollRight}
-          className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white border border-gray-300 rounded-full p-3 shadow-lg hover:bg-gray-50 hover:shadow-xl transition-all duration-200 z-20"
-          title="Rolar para direita"
-        >
-          <FiChevronRight className="w-4 h-4 text-gray-600" />
-        </button>
-      )}
-    </>
-  );
-});
-
-ScrollIndicator.displayName = 'ScrollIndicator';
+// O componente ScrollIndicator foi completamente removido.
 
 /**
- * 5. Componente Principal da Tabela CORRIGIDO
+ * 5. Componente Principal da Tabela (MODIFICADO)
  */
 const StudentTable = ({ students, pagination, onToggleFavorite, onStatusChange }) => {
-  const tableContainerRef = useRef(null);
+  // 🔥 REMOVIDO 'tableContainerRef'
+  // const tableContainerRef = useRef(null); 
 
   const handleToggleFavorite = useCallback((studentId, isFavorited) => {
     onToggleFavorite(studentId, isFavorited);
@@ -445,64 +391,58 @@ const StudentTable = ({ students, pagination, onToggleFavorite, onStatusChange }
         <Pagination {...pagination} />
       )}
 
-      {/* Container da tabela com rolagem horizontal */}
-      <div className="relative">
-        {/* Indicadores de rolagem */}
-        <ScrollIndicator tableRef={tableContainerRef} />
+      {/* Container da tabela com rolagem horizontal (REMOVIDO 'relative') */}
+      <div>
+        {/* 🔥 REMOVIDO <ScrollIndicator tableRef={tableContainerRef} /> */}
         
-        {/* Tabela com rolagem horizontal */}
-        <div 
-          ref={tableContainerRef}
-          className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 max-h-[calc(100vh-300px)] min-h-[400px]"
-          style={{ 
-            scrollBehavior: 'smooth',
-            WebkitOverflowScrolling: 'touch'
-          }}
-        >
-          <table className="w-full min-w-[1200px] divide-y divide-gray-200">
-            <thead className="bg-gray-50 sticky top-0 z-10">
+        {/* 🔥 REMOVIDO 'overflow-x-auto', 'ref', 'style', 'min-h-[...]', 'max-h-[...]' */}
+        <div className="w-full">
+          {/* 🔥 REMOVIDO 'min-w-[1200px]' da <table> */}
+          <table className="w-full divide-y divide-gray-200">
+            {/* 🔥 REMOVIDO 'sticky', 'z-20', 'min-w-[...]' dos <th> */}
+            <thead className="bg-gray-50">
               <tr>
-                <th scope="col" className="w-16 px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 sticky left-0 z-20 border-r border-gray-200">
+                <th scope="col" className="w-16 px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-r border-gray-200">
                   <div className="flex items-center justify-center">
                     <FiStar className="w-4 h-4" />
                   </div>
                 </th>
                 
-                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 min-w-[180px] sticky left-16 z-20 border-r border-gray-200">
+                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-r border-gray-200">
                   Nome
                 </th>
 
-                <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 min-w-[80px]">
+                <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
                   Chamada
                 </th>
                 
-                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 min-w-[200px]">
+                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
                   Curso
                 </th>
 
-                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 min-w-[180px]">
+                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
                   Universidade
                 </th>
 
-                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 min-w-[150px]">
+                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
                   Unidade
                 </th>
 
-                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 min-w-[100px]">
+                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
                   Gênero
                 </th>
 
-                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 min-w-[140px]">
+                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
                   Status
                 </th>
               </tr>
             </thead>
             
             <tbody className="bg-white divide-y divide-gray-200">
-              {students.length > 0 ? (
+              {students && students.length > 0 ? (
                 students.map((student) => (
                   <StudentTableRow 
-                    key={student.id} 
+                    key={student._key || student.id} // Usa _key para consistência otimista
                     student={student}
                     onToggleFavorite={handleToggleFavorite}
                     onStatusChange={handleStatusChange}

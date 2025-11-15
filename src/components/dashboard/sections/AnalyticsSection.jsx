@@ -1,4 +1,3 @@
-// pages/AnalyticsSection.jsx (Página Principal)
 import React from 'react';
 import { 
   FiBarChart2, 
@@ -6,6 +5,8 @@ import {
   FiActivity,
   FiRefreshCw
 } from 'react-icons/fi';
+// 🔥 1. Importar o useNavigate
+import { useNavigate } from 'react-router-dom'; 
 import { useAuth } from '@/contexts/AuthContext';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { RealTimeMetrics } from './analytics/RealTimeMetrics';
@@ -75,30 +76,28 @@ const PremiumDashboard = () => {
         loading={loading}
       />
 
-      {/* Main Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-8">
-        {/* Coluna 1 */}
-        <div className="xl:col-span-2 space-y-8">
-          <FunnelChart 
-            data={data.funnelStats} 
+      {/* Grid Principal */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-8 mt-8">
+        {/* Coluna Principal (Ações) - 60% */}
+        <div className="lg:col-span-3 space-y-8">
+          <HotLeadsTable 
+            data={data.hotLeads} 
             loading={loading}
           />
-          
           <CourseRadar 
             data={data.courseRadar} 
             loading={loading}
           />
         </div>
 
-        {/* Coluna 2 */}
-        <div className="space-y-8">
-          <HotLeadsTable 
-            data={data.hotLeads} 
-            loading={loading}
-          />
-          
+        {/* Coluna Secundária (Insights) - 40% */}
+        <div className="lg:col-span-2 space-y-8">
           <HiddenOpportunities 
             data={data.hiddenOpportunities} 
+            loading={loading}
+          />
+          <FunnelChart 
+            data={data.funnelStats} 
             loading={loading}
           />
         </div>
@@ -166,11 +165,18 @@ const PremiumDashboard = () => {
   );
 };
 
+
+// =====================================================================
+// == 🔥 2. COMPONENTE ATUALIZADO
+// =====================================================================
+
 const UpgradePrompt = () => {
-  const { choosePlan } = useAuth();
+  // const { choosePlan } = useAuth(); // <-- Removido
+  const navigate = useNavigate(); // <-- Adicionado
 
   const handleUpgrade = () => {
-    choosePlan('premium', 'monthly');
+    // choosePlan('premium', 'monthly'); // <-- Lógica antiga removida
+    navigate('/planos'); // <-- Nova lógica de navegação
   };
 
   return (
@@ -185,11 +191,7 @@ const UpgradePrompt = () => {
             }}></div>
           </div>
 
-          {/* Icon */}
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-white text-gray-900 rounded-full mb-6">
-            <FiBarChart2 className="w-8 h-8" />
-          </div>
-
+          
           {/* Badge */}
           <span className="inline-block px-4 py-2 bg-[#1bff17] text-gray-900 rounded-full text-sm font-bold mb-4">
             PLANO VETERANO MOR
@@ -233,7 +235,7 @@ const UpgradePrompt = () => {
 
           {/* Footer Note */}
           <p className="text-sm text-gray-400 mt-6">
-            Upgrade instantâneo • Cancelamento a qualquer momento
+            • Upgrade instantâneo
           </p>
         </div>
       </div>

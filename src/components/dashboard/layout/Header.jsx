@@ -2,7 +2,7 @@ import React from 'react';
 import { FiMenu, FiChevronDown, FiBell } from 'react-icons/fi';
 
 /**
- * Componente do Header (versão simplificada)
+ * Componente do Header (versão corrigida)
  */
 const Header = ({ activeSection, setSidebarOpen, navItems, userData }) => {
   
@@ -11,13 +11,21 @@ const Header = ({ activeSection, setSidebarOpen, navItems, userData }) => {
     return activeItem ? activeItem.label : 'Painel';
   };
 
-  // 🔥 FUNÇÃO SIMPLIFICADA PARA OBTER O NOME
+  // 🔥 FUNÇÃO CORRIGIDA: Acessando a estrutura correta
   const getUserName = () => {
-    if (!userData || !userData.userProfile) return 'Usuário';
-    return userData.userProfile.full_name || 
-           userData.userProfile.email?.split('@')[0] || 
+    if (!userData) return 'Usuário';
+    
+    // 🔥 CORREÇÃO: userData agora tem a estrutura do user_profile
+    // O nome pode estar em full_name (do user) ou na estrutura do user_profile
+    return userData.full_name || 
+           userData.userProfile?.full_name || 
+           userData.email?.split('@')[0] || 
            'Usuário';
   };
+
+  // 🔥 ADICIONE: Debug para verificar a estrutura
+  console.log('🔍 Header - userData:', userData);
+  console.log('🔍 Header - nome do usuário:', getUserName());
 
   return (
     <header className="flex items-center justify-between h-20 px-6 md:px-8 bg-white border-b border-gray-100 sticky top-0 z-30">
@@ -39,7 +47,6 @@ const Header = ({ activeSection, setSidebarOpen, navItems, userData }) => {
       {/* Lado Direito: Nome do Usuário */}
       <div className="flex items-center space-x-3">
         <div className="flex items-center space-x-2 p-2">
-     
           <span className="hidden md:block font-medium text-gray-700">
             {getUserName()}
           </span>

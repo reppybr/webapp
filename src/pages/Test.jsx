@@ -1,50 +1,66 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from '../components/dashboard/layout/Sidebar';
 import Header from '../components/dashboard/layout/Header';
 import MainContent from '../components/dashboard/MainContent';
 import { useAuth } from '../contexts/AuthContext';
 
-/**
- * Componente da PÁGINA do Dashboard
- * Orquestra o layout e o estado principal
- */
-const Dashboard = () => {
-  // Estado para controlar qual seção está ativa
+const Test = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
-  
-  // Estado para controlar a sidebar mobile
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // 🔥 IMPORTAR TODOS OS DADOS DO USUÁRIO
   const { 
-    hasActivePlan, 
-    hasNoPlan, 
+    user, // 🔥 PEGAR O USER COMPLETO DO AUTHCONTEXT
     loading, 
     getPlanType,
-    getUserPlan,
     isPremium,
     isBasic,
-    isFree,
-    getUserRepublic,
-    getUserFilters,
-    getUserCalouros,
-    getRepublicMembers,
-    getRepublicInfo,
-    user
+    isFree
   } = useAuth();
   
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // 🔥 CONSTRUIR userData COM ESTRUTURA CORRETA
+  const userData = user?.user_profile ? {
+    // 🔥 ESTRUTURA IDÊNTICA AO BACKEND
+    ...user.user_profile,
+    // Métodos de conveniência
+    isPremium: isPremium(),
+    isBasic: isBasic(),
+    isFree: isFree(),
+    planType: getPlanType()
+  } : null;
+
+  // 🔥 DEBUG: Verificar a estrutura
+  useEffect(() => {
+    if (userData) {
+      console.log('🔍 Dashboard - userData:', userData);
+      console.log('🔍 Dashboard - republica:', userData.republica);
+      console.log('🔍 Dashboard - tipo:', userData.republica?.tipo);
+    }
+  }, [userData]);
+
+  // 🔥 DETECTAR NAVEGAÇÃO COM FILTRO
+  useEffect(() => {
+    if (location.state?.loadedFilter) {
+      console.log('🟡 [Dashboard] Navegação com filtro detectada:', location.state.filterName);
+      setActiveSection('dashboard');
+      setTimeout(() => {
+        window.history.replaceState({}, document.title);
+      }, 100);
+    }
+  }, [location]);
 
   // 🔥 REDIRECIONA PARA PLANOS SE NÃO TIVER PLANO ATIVO
   useEffect(() => {
-    if (!loading && hasNoPlan()) {
+    if (!loading && userData && !userData.has_active_plan) {
       console.log('🟡 Usuário sem plano ativo, redirecionando para /planos');
       navigate('/planos', { replace: true });
     }
-  }, [loading, hasNoPlan, navigate]);
+  }, [loading, userData, navigate]);
 
-  // Se ainda está carregando, mostra loading
+  // Loading
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -56,27 +72,29 @@ const Dashboard = () => {
     );
   }
 
+  // Se não tem userData, mostra erro
+  if (!userData) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-500 text-lg">Erro ao carregar dados do usuário</div>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-4 bg-blue-500 text-white px-4 py-2 rounded"
+          >
+            Recarregar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Se não tem plano ativo, não renderiza nada (já vai redirecionar)
-  if (hasNoPlan()) {
+  if (!userData.has_active_plan) {
     return null;
   }
 
-  // 🔥 OBTER TODOS OS DADOS PARA PASSAR PARA AS SEÇÕES
-  const userData = {
-    planType: getPlanType(),
-    userPlan: getUserPlan(),
-    republic: getUserRepublic(),
-    republicInfo: getRepublicInfo(),
-    filters: getUserFilters(),
-    calouros: getUserCalouros(),
-    members: getRepublicMembers(),
-    userProfile: user?.user_profile,
-    isPremium: isPremium(),
-    isBasic: isBasic(),
-    isFree: isFree()
-  };
-
-  // Lista de seções para passar ao Header (para os títulos)
+  // Lista de seções para passar ao Header
   const allNavItems = [
     { id: 'dashboard', label: 'Painel' },
     { id: 'filtros', label: 'Filtros Salvos' },
@@ -88,7 +106,6 @@ const Dashboard = () => {
 
   return (
     <div className="flex min-h-screen bg-gray-100 font-sans">
-      
       {/* --- SIDEBAR --- */}
       <Sidebar 
         activeSection={activeSection}
@@ -100,7 +117,6 @@ const Dashboard = () => {
 
       {/* --- CONTEÚDO PRINCIPAL --- */}
       <div className="flex-1 flex flex-col min-h-screen lg:ml-80">
-        
         {/* --- HEADER --- */}
         <Header 
           activeSection={activeSection}
@@ -114,6 +130,7 @@ const Dashboard = () => {
           <MainContent 
             activeSection={activeSection} 
             userData={userData}
+            navigationState={location.state}
           />
         </main>
       </div>
@@ -121,4 +138,4 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;
+export default Test;

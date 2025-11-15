@@ -6,6 +6,7 @@ import FilterBar from './dashboard/FilterBar';
 import SaveFilterModal from './dashboard/SaveFilterModal';
 import { calouroService } from '../../../services/calouroService';
 import { filterService } from '../../../services/filterService';
+import { apiService } from '../../../services/apiService'; // Import já existente
 import * as XLSX from 'xlsx';
 
 const normalizeString = (str) => {
@@ -40,13 +41,27 @@ const DashboardSection = ({ userData, navigationState }) => {
   const [studentsMetadata, setStudentsMetadata] = useState({});
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Estado para opções de filtro
+  const [filterOptions, setFilterOptions] = useState({
+    cursos: [],
+    universidades: [],
+    unidades: [],
+    chamadas: [], // Começa vazio, será preenchido pela API
+    status: ['Nenhum', 'Chamado', 'Interessado', 'Sucesso', 'Rejeitado']
+  });
+
+  // Estado para controle de carregamento
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+
   // Refs para controle de execução
   const hasLoadedNavigationFilter = useRef(false);
+  const hasLoadedFilterOptions = useRef(false);
   const filtersRef = useRef(filters);
   const studentsMetadataRef = useRef(studentsMetadata);
   const studentsRef = useRef([]);
+  const abortControllerRef = useRef(null);
 
-  // Atualizar refs quando estados mudarem
+  // Atualizar refs
   useEffect(() => {
     filtersRef.current = filters;
   }, [filters]);
@@ -64,27 +79,19 @@ const DashboardSection = ({ userData, navigationState }) => {
     userCity, 
     accessInfo, 
     refetch 
-  } = useCityData(currentPage, itemsPerPage, filters);
+  } = useCityData(currentPage, itemsPerPage, filters, userData);
 
-  // 🔥 EFEITO CORRIGIDO: Carregar filtro da navegação UMA VEZ
+  // Carregar filtro da navegação
   useEffect(() => {
     if (navigationState?.loadedFilter && !hasLoadedNavigationFilter.current) {
       const { loadedFilter, filterName } = navigationState;
-      
       try {
         console.log('🟡 Carregando filtro da navegação:', filterName);
-        
         if (loadedFilter.filters) {
           const filtersWithDefaults = {
-            q: '',
-            cursos: [],
-            universidades: [],
-            unidades: [],
-            chamadas: [],
-            status: [],
+            q: '', cursos: [], universidades: [], unidades: [], chamadas: [], status: [],
             ...loadedFilter.filters
           };
-          
           setFilters(filtersWithDefaults);
           setCurrentPage(1);
           hasLoadedNavigationFilter.current = true;
@@ -96,8 +103,9 @@ const DashboardSection = ({ userData, navigationState }) => {
     }
   }, [navigationState]);
 
-  // 🔥 FUNÇÃO OTIMIZADA: Carregar filtros salvos
+  // Carregar filtros salvos
   const loadSavedFilters = useCallback(async () => {
+    if (savedFilters.length > 0) return;
     try {
       setIsLoadingFilters(true);
       const userFilters = await filterService.getUserFilters();
@@ -107,18 +115,108 @@ const DashboardSection = ({ userData, navigationState }) => {
     } finally {
       setIsLoadingFilters(false);
     }
-  }, []);
+  }, [savedFilters.length]);
 
-  // Carregar filtros quando o componente montar
   useEffect(() => {
-    loadSavedFilters();
-  }, [loadSavedFilters]);
+    if (initialLoadComplete) {
+      loadSavedFilters();
+    }
+  }, [initialLoadComplete, loadSavedFilters]);
 
-  // 🔥 FUNÇÃO OTIMIZADA: Recarregar dados
+  // ===================================================================
+  // 🔥 CORREÇÃO PRINCIPAL AQUI (useCallback de loadFilterOptions)
+  // ===================================================================
+  const loadFilterOptions = useCallback(async () => {
+    if (!userCity || hasLoadedFilterOptions.current) return;
+
+    try {
+      console.log('🟡 Carregando opções de filtro para cidade:', userCity);
+      
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      abortControllerRef.current = new AbortController();
+      
+      // 🔥 1. Adicionada a API de 'chamadas' ao Promise.all
+      const [cursosRes, uniRes, unidadesRes, chamadasRes] = await Promise.all([
+        apiService.get(`/api/v1/filtros/cursos?cidade=${userCity}`, {
+          signal: abortControllerRef.current.signal
+        }),
+        apiService.get(`/api/v1/filtros/universidades?cidade=${userCity}`, {
+          signal: abortControllerRef.current.signal
+        }),
+        apiService.get(`/api/v1/filtros/unidades?cidade=${userCity}`, {
+          signal: abortControllerRef.current.signal
+        }),
+        // 🔥 A chamada que faltava:
+        apiService.get(`/api/v1/filtros/chamadas?cidade=${userCity}`, {
+          signal: abortControllerRef.current.signal
+        })
+      ]);
+
+      // 🔥 2. Usar o resultado da API de 'chamadas', com um fallback robusto
+      const chamadasOptions = chamadasRes.chamadas && chamadasRes.chamadas.length > 0
+        ? chamadasRes.chamadas.sort((a, b) => a - b)
+        : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]; // Fallback estático
+
+      setFilterOptions({
+        cursos: cursosRes.cursos || [],
+        universidades: uniRes.universidades || [],
+        unidades: unidadesRes.unidades || [],
+        chamadas: chamadasOptions, // <-- Correto
+        status: ['Nenhum', 'Chamado', 'Interessado', 'Sucesso', 'Rejeitado']
+      });
+
+      hasLoadedFilterOptions.current = true;
+      console.log('✅ Opções de filtro carregadas.');
+      
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        console.log('🟡 Requisição de filtros cancelada');
+        return;
+      }
+      
+      console.error("🔴 Erro ao carregar opções de filtro:", error);
+      
+      // 🔥 3. Fallback em caso de erro (usa lista estática, não o cityData)
+      setFilterOptions(prev => ({
+        ...prev,
+        cursos: [],
+        universidades: [],
+        unidades: [],
+        chamadas: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], // Fallback estático
+        status: ['Nenhum', 'Chamado', 'Interessado', 'Sucesso', 'Rejeitado']
+      }));
+      hasLoadedFilterOptions.current = true; // Marca como carregado mesmo com erro
+    }
+  // 🔥 4. Removida a dependência 'cityData' para evitar o bug
+  }, [userCity]);
+  // ===================================================================
+  // FIM DA CORREÇÃO
+  // ===================================================================
+
+  // Carregar opções de filtro
+  useEffect(() => {
+    if (userCity && !hasLoadedFilterOptions.current) {
+      loadFilterOptions();
+    }
+  }, [userCity, loadFilterOptions]);
+
+  // Marcar carregamento inicial
+  useEffect(() => {
+    if (userCity && !initialLoadComplete) {
+      setInitialLoadComplete(true);
+    }
+  }, [userCity, initialLoadComplete]);
+
+  // Recarregar dados
   const refreshCalourosData = useCallback(async () => {
     setIsRefreshing(true);
     try {
       await refetch();
+      // 🔥 NOVO: Forçar o recarregamento das opções de filtro
+      hasLoadedFilterOptions.current = false;
+      await loadFilterOptions();
       toast.success('Dados atualizados com sucesso!');
     } catch (error) {
       console.error('🔴 Erro ao atualizar dados:', error);
@@ -126,82 +224,69 @@ const DashboardSection = ({ userData, navigationState }) => {
     } finally {
       setIsRefreshing(false);
     }
-  }, [refetch]);
+  }, [refetch, loadFilterOptions]); // Adicionado loadFilterOptions
 
-  // 🔥 FUNÇÃO OTIMIZADA: Criar chave do estudante
+  // Criar chave do estudante
   const createStudentKey = useCallback((name, course, university, campus) => {
     return `${normalizeString(name)}-${normalizeString(course)}-${normalizeString(university)}-${normalizeString(campus)}`;
   }, []);
 
-  // 🔥 EFEITO OTIMIZADO: Carregar favoritos e status
-  useEffect(() => {
-    const loadFavoritesAndStatus = async () => {
-      if (!cityData || cityData.length === 0) return;
-
-      try {
-        const calourosResponse = await calouroService.getSelectedCalouros();
-        const calouros = calourosResponse.calouros || [];
-
-        const statusDisplayMap = {
-          'pending': 'Nenhum',
-          'contacted': 'Chamado', 
-          'approved': 'Sucesso',
-          'rejected': 'Rejeitado'
+  // Carregar favoritos e status
+  const loadFavoritesAndStatus = useCallback(async () => {
+    if (!cityData || cityData.length === 0) return;
+    try {
+      const calourosResponse = await calouroService.getSelectedCalouros();
+      const calouros = calourosResponse.calouros || [];
+      const statusDisplayMap = {
+        'pending': 'Nenhum',
+        'contacted': 'Chamado', 
+        'interested': 'Interessado',
+        'approved': 'Sucesso',
+        'rejected': 'Rejeitado'
+      };
+      const metadata = {};
+      calouros.forEach(calouro => {
+        const studentKey = createStudentKey(calouro.name, calouro.course, calouro.university, calouro.campus);
+        metadata[studentKey] = {
+          isFavorited: calouro.favourite || false,
+          status: statusDisplayMap[calouro.status] || 'Nenhum',
+          dbId: calouro.id
         };
-
-        const metadata = {};
-
-        calouros.forEach(calouro => {
-          const studentKey = createStudentKey(
-            calouro.name,
-            calouro.course,
-            calouro.university,
-            calouro.campus
-          );
-          
-          metadata[studentKey] = {
-            isFavorited: calouro.favourite || false,
-            status: statusDisplayMap[calouro.status] || 'Nenhum',
-            dbId: calouro.id
-          };
-        });
-
-        setStudentsMetadata(metadata);
-      } catch (err) {
-        console.error('🔴 Erro ao carregar favoritos e status:', err);
-      }
-    };
-
-    loadFavoritesAndStatus();
+      });
+      setStudentsMetadata(metadata);
+    } catch (err) {
+      console.error('🔴 Erro ao carregar favoritos e status:', err);
+    }
   }, [cityData, createStudentKey]);
 
-  // 🔥 MEMO OTIMIZADO: Converter estudantes da API
+  useEffect(() => {
+    if (cityData && cityData.length > 0) {
+      loadFavoritesAndStatus();
+    }
+  }, [cityData, loadFavoritesAndStatus]);
+
+  // Converter estudantes da API
   const students = useMemo(() => {
     if (!cityData) return [];
+    const genderMap = { 'male': 'Masculino', 'female': 'Feminino', 'other': 'Outro' };
+    const republicType = userData?.republica?.tipo || userData?.user_profile?.republica?.tipo;
+    
+    const filteredByGender = cityData.filter(student => {
+      if (republicType === 'masculina') return student.genero === 'male';
+      if (republicType === 'feminina') return student.genero === 'female';
+      return true;
+    });
 
-    const genderMap = { 
-      'male': 'Masculino', 
-      'female': 'Feminino', 
-      'other': 'Outro' 
-    };
-
-    const convertedStudents = cityData.map((student, index) => {
+    const convertedStudents = filteredByGender.map((student, index) => {
       const studentName = student.name;
       const studentCourse = student.course;
       const studentUniversity = student.university;
       const studentCampus = student.unidade;
-
-      const studentKey = createStudentKey(
-        studentName,
-        studentCourse,
-        studentUniversity,
-        studentCampus
-      );
-      
+      const studentKey = createStudentKey(studentName, studentCourse, studentUniversity, studentCampus);
       const metadata = studentsMetadata[studentKey] || {};
 
       return {
-        id: metadata.dbId || `temp-${index}`,
+        id: metadata.dbId || `temp-${student.chamada}-${index}`,
         nome: studentName,
         chamada: student.chamada,
         curso: studentCourse,
@@ -213,220 +298,110 @@ const DashboardSection = ({ userData, navigationState }) => {
         isFavorited: metadata.isFavorited || false,
         status: metadata.status || 'Nenhum',
         originalData: {
-          name: studentName,
-          course: studentCourse,
-          university: studentUniversity,
-          campus: studentCampus,
-          gender: student.genero,
-          entrance_year: new Date().getFullYear()
+          name: studentName, course: studentCourse, university: studentUniversity,
+          campus: studentCampus, gender: student.genero, entrance_year: new Date().getFullYear()
         },
-        // 🔥 ADICIONADO: Chave para otimismo
-        _key: studentKey
+        _key: studentKey + `-${student.chamada}-${index}`
       };
     });
-
-    // 🔥 ATUALIZAR REF DOS STUDENTS
     studentsRef.current = convertedStudents;
-    
     return convertedStudents;
-  }, [cityData, studentsMetadata, createStudentKey]);
+  }, [cityData, studentsMetadata, createStudentKey, userData]);
 
-  // 🔥 MEMO OTIMIZADO: Aplicar filtros de cliente
+  // Aplicar filtros de cliente
   const filteredStudents = useMemo(() => {
     if (!filters.status || filters.status.length === 0) {
       return students;
     }
-    
     return students.filter(student => filters.status.includes(student.status));
   }, [students, filters.status]);
 
-  // 🔥 MEMO OTIMIZADO: Extrair opções de filtro
-  const filterOptions = useMemo(() => {
-    if (!students || students.length === 0) {
-      return { 
-        cursos: [], 
-        universidades: [], 
-        unidades: [], 
-        chamadas: [],
-        status: ['Nenhum', 'Chamado', 'Sucesso', 'Rejeitado']
-      };
-    }
-  
-    const cursos = [...new Set(students.map(s => s.curso).filter(Boolean))].sort();
-    const universidades = [...new Set(students.map(s => s.universidade).filter(Boolean))].sort();
-    const unidades = [...new Set(students.map(s => s.unidade).filter(Boolean))].sort();
-    const chamadas = [...new Set(students.map(s => s.chamada).filter(Boolean))].sort((a, b) => a - b);
-    const statusOptions = ['Nenhum', 'Chamado', 'Sucesso', 'Rejeitado'];
-  
-    return { cursos, universidades, unidades, chamadas, status: statusOptions };
-  }, [students]);
-
-  // Resetar para página 1 quando filtros mudarem
+  // Resetar página
   useEffect(() => {
     setCurrentPage(1);
-  }, [filters, itemsPerPage]);
+  }, [filters.cursos, filters.universidades, filters.unidades, filters.chamadas, filters.q, itemsPerPage]);
 
-  // 🔥🔥🔥 HANDLERS SUPER OTIMISTAS: Favoritos e Status
+  // Cleanup
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
+  // Handlers (Todos sem alteração)
   const handleToggleFavorite = useCallback(async (studentId, isFavorited) => {
-    // 🔥 ENCONTRAR STUDENT USANDO REF (INSTANTÂNEO)
     const student = studentsRef.current.find(s => s.id === studentId);
     if (!student) return;
-
     const studentKey = student._key;
-
-    // 🔥 ATUALIZAÇÃO OTIMISTA IMEDIATA
-    setStudentsMetadata(prev => ({
-      ...prev,
-      [studentKey]: {
-        ...prev[studentKey],
-        isFavorited: isFavorited
-      }
-    }));
-
-    // 🔥 AÇÃO ASSÍNCRONA EM SEGUNDO PLANO (SEM ATRASAR A UI)
+    setStudentsMetadata(prev => ({ ...prev, [studentKey]: { ...prev[studentKey], isFavorited } }));
     setTimeout(async () => {
       try {
         const studentExistsInDb = !String(studentId).startsWith('temp-');
         let actualStudentId = studentId;
-
         if (studentExistsInDb) {
           await calouroService.updateFavorite(actualStudentId, isFavorited);
         } else if (isFavorited) {
-          const createResponse = await calouroService.createCalouro({
-            ...student.originalData,
-            favourite: true,
-            status: 'pending'
-          });
+          const createResponse = await calouroService.createCalouro({ ...student.originalData, favourite: true, status: 'pending' });
           actualStudentId = createResponse.calouro_id;
-
-          // Atualizar o ID no metadata
-          setStudentsMetadata(prev => ({
-            ...prev,
-            [studentKey]: {
-              ...prev[studentKey],
-              dbId: actualStudentId,
-              isFavorited: true
-            }
-          }));
+          setStudentsMetadata(prev => ({ ...prev, [studentKey]: { ...prev[studentKey], dbId: actualStudentId, isFavorited: true } }));
         }
-
         console.log(`✅ Favorito atualizado no backend: ${student.nome}`);
       } catch (err) {
         console.error('🔴 Erro ao atualizar favorito no backend:', err);
-        // 🔥 REVERTER SE FALHAR (OPCIONAL - O USUÁRIO PODE TENTAR NOVAMENTE)
         toast.error(`Erro ao ${isFavorited ? 'favoritar' : 'desfavoritar'} estudante`);
-        
-        // Reverter a UI em caso de erro
-        setStudentsMetadata(prev => ({
-          ...prev,
-          [studentKey]: {
-            ...prev[studentKey],
-            isFavorited: !isFavorited
-          }
-        }));
+        setStudentsMetadata(prev => ({ ...prev, [studentKey]: { ...prev[studentKey], isFavorited: !isFavorited } }));
       }
     }, 0);
-
-    // 🔥 FEEDBACK VISUAL IMEDIATO (SEM ATRASO)
     toast.success(`Estudante ${isFavorited ? 'favoritado' : 'desfavoritado'} com sucesso!`);
   }, []);
 
   const handleStatusChange = useCallback(async (studentId, newStatus) => {
-    // 🔥 ENCONTRAR STUDENT USANDO REF (INSTANTÂNEO)
     const student = studentsRef.current.find(s => s.id === studentId);
     if (!student) return;
-
     const studentKey = student._key;
-
-    // 🔥 ATUALIZAÇÃO OTIMISTA IMEDIATA
-    setStudentsMetadata(prev => ({
-      ...prev,
-      [studentKey]: {
-        ...prev[studentKey],
-        status: newStatus
-      }
-    }));
-
-    // 🔥 AÇÃO ASSÍNCRONA EM SEGUNDO PLANO (SEM ATRASAR A UI)
+    setStudentsMetadata(prev => ({ ...prev, [studentKey]: { ...prev[studentKey], status: newStatus } }));
     setTimeout(async () => {
       try {
         const statusMapping = {
-          'Nenhum': 'pending',
-          'Chamado': 'contacted',
-          'Sucesso': 'approved',
-          'Rejeitado': 'rejected'
+          'Nenhum': 'pending', 'Chamado': 'contacted', 'Interessado': 'interested',
+          'Sucesso': 'approved', 'Rejeitado': 'rejected'
         };
         const statusBackend = statusMapping[newStatus] || 'pending';
-
         const studentExistsInDb = !String(studentId).startsWith('temp-');
         let actualStudentId = studentId;
-
         if (studentExistsInDb) {
           await calouroService.updateStatus(actualStudentId, { status: statusBackend });
         } else if (newStatus !== 'Nenhum') {
-          const createResponse = await calouroService.createCalouro({
-            ...student.originalData,
-            favourite: student.isFavorited || false,
-            status: statusBackend
-          });
+          const createResponse = await calouroService.createCalouro({ ...student.originalData, favourite: student.isFavorited || false, status: statusBackend });
           actualStudentId = createResponse.calouro_id;
-
-          // Atualizar o ID no metadata
-          setStudentsMetadata(prev => ({
-            ...prev,
-            [studentKey]: {
-              ...prev[studentKey],
-              dbId: actualStudentId,
-              status: newStatus
-            }
-          }));
+          setStudentsMetadata(prev => ({ ...prev, [studentKey]: { ...prev[studentKey], dbId: actualStudentId, status: newStatus } }));
         }
-
         console.log(`✅ Status atualizado no backend: ${student.nome} -> ${newStatus}`);
       } catch (err) {
         console.error('🔴 Erro ao atualizar status no backend:', err);
-        // 🔥 REVERTER SE FALHAR
         toast.error('Erro ao atualizar status do estudante');
-        
-        // Reverter a UI em caso de erro
-        setStudentsMetadata(prev => ({
-          ...prev,
-          [studentKey]: {
-            ...prev[studentKey],
-            status: student.status // Status anterior
-          }
-        }));
+        setStudentsMetadata(prev => ({ ...prev, [studentKey]: { ...prev[studentKey], status: student.status } }));
       }
     }, 0);
-
-    // 🔥 FEEDBACK VISUAL IMEDIATO (SEM ATRASO)
     toast.success(`Status atualizado para "${newStatus}"`);
   }, []);
 
-  // 🔥 HANDLERS OTIMIZADOS: Exportar e gerenciar filtros
   const handleExportSheet = useCallback(() => {
     if (!filteredStudents.length) {
       toast.warning('Nenhum dado para exportar!');
       return;
     }
-    
     try {
       const dataToExport = filteredStudents.map(student => ({
-        Nome: student.nome,
-        Chamada: student.chamada,
-        Curso: student.curso,
-        Universidade: student.universidade,
-        Unidade: student.unidade,
-        Gênero: student.genero,
-        Cidade: student.cidade || 'N/A',
-        Favorito: student.isFavorited ? 'Sim' : 'Não',
-        Status: student.status
+        Nome: student.nome, Chamada: student.chamada, Curso: student.curso,
+        Universidade: student.universidade, Unidade: student.unidade, Gênero: student.genero,
+        Cidade: student.cidade || 'N/A', Favorito: student.isFavorited ? 'Sim' : 'Não', Status: student.status
       }));
-
       const ws = XLSX.utils.json_to_sheet(dataToExport);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Calouros');
-
       const fileName = `calouros-${userCity}-${new Date().toISOString().split('T')[0]}.xlsx`;
       XLSX.writeFile(wb, fileName);
       toast.success('Planilha exportada com sucesso!');
@@ -438,83 +413,50 @@ const DashboardSection = ({ userData, navigationState }) => {
 
   const handleSaveFilter = useCallback(async (filterName) => {
     try {
-      const filterData = {
-        name: filterName,
-        filter_type: 'calouros',
-        filters: filtersRef.current,
-        is_shared: false
-      };
-
+      const filterData = { name: filterName, filter_type: 'calouros', filters: filtersRef.current, is_shared: false };
       await filterService.saveFilter(filterData);
       await loadSavedFilters();
       toast.success('Filtro salvo com sucesso!');
       setIsModalOpen(false);
     } catch (error) {
       console.error('🔴 Erro ao salvar filtro:', error);
-      const errorMessage = error.message.includes('404') 
-        ? 'Serviço de filtros temporariamente indisponível'
-        : 'Erro ao salvar filtro';
-      toast.error(errorMessage);
+      toast.error('Erro ao salvar filtro');
     }
   }, [loadSavedFilters]);
 
   const handleLoadFilter = useCallback(async (filterId) => {
     try {
       const filter = await filterService.loadFilter(filterId);
-      
       if (filter?.filters) {
-        const filtersWithDefaults = {
-          q: '',
-          cursos: [],
-          universidades: [],
-          unidades: [],
-          chamadas: [],
-          status: [],
-          ...filter.filters
-        };
-        
+        const filtersWithDefaults = { q: '', cursos: [], universidades: [], unidades: [], chamadas: [], status: [], ...filter.filters };
         setFilters(filtersWithDefaults);
         setCurrentPage(1);
         console.log('✅ Filtro carregado silenciosamente:', filter.name);
       }
     } catch (error) {
       console.error('🔴 Erro ao carregar filtro:', error);
-      const errorMessage = error.message.includes('404')
-        ? 'Filtro não encontrado'
-        : 'Erro ao carregar filtro';
-      toast.error(errorMessage);
+      toast.error('Erro ao carregar filtro');
     }
   }, []);
 
   const handleDeleteFilter = useCallback(async (filterId, filterName) => {
     if (!window.confirm(`Tem certeza que deseja excluir o filtro "${filterName}"?`)) return;
-
     try {
       await filterService.deleteFilter(filterId);
       await loadSavedFilters();
       toast.success('Filtro excluído com sucesso!');
     } catch (error) {
       console.error('🔴 Erro ao excluir filtro:', error);
-      const errorMessage = error.message.includes('404')
-        ? 'Filtro não encontrado'
-        : 'Erro ao excluir filtro';
-      toast.error(errorMessage);
+      toast.error('Erro ao excluir filtro');
     }
   }, [loadSavedFilters]);
 
   const handleOpenSaveModal = useCallback(() => {
-    const isFilterActive = (filtersRef.current.cursos?.length > 0) || 
-                           (filtersRef.current.universidades?.length > 0) || 
-                           (filtersRef.current.unidades?.length > 0) || 
-                           (filtersRef.current.chamadas?.length > 0) ||
-                           (filtersRef.current.status?.length > 0) ||
-                           (filtersRef.current.q && filtersRef.current.q !== '');
-    
+    const isFilterActive = (filtersRef.current.cursos?.length > 0) || (filtersRef.current.universidades?.length > 0) || (filtersRef.current.unidades?.length > 0) || (filtersRef.current.chamadas?.length > 0) || (filtersRef.current.status?.length > 0) || (filtersRef.current.q && filtersRef.current.q !== '');
     if (!isFilterActive) {
       toast.warning('Aplique alguns filtros antes de salvar!');
       return;
     }
-    
     setIsModalOpen(true);
   }, []);
 
@@ -539,7 +481,7 @@ const DashboardSection = ({ userData, navigationState }) => {
     );
   }
 
-  if (error) {
+  if (error && !cityData) { // Mostra erro fatal apenas se não houver dados antigos
     return (
       <div className="bg-white rounded-lg shadow p-6">
         <div className="text-red-600 mb-4">
@@ -605,7 +547,7 @@ const DashboardSection = ({ userData, navigationState }) => {
           userData={userData}
           filteredStudents={filteredStudents}
           accessInfo={accessInfo}
-          republicType={accessInfo.republica_tipo || 'mista'}
+          republicType={userData?.republica?.tipo || userData?.user_profile?.republica?.tipo}
         />
         
         <StudentTable 
@@ -622,6 +564,7 @@ const DashboardSection = ({ userData, navigationState }) => {
           } : null}
           onToggleFavorite={handleToggleFavorite}
           onStatusChange={handleStatusChange}
+          hasError={!!error} // Passa se houve um erro (mesmo que não fatal)
         />
       </div>
 
